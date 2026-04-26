@@ -57,68 +57,42 @@ export const checkQuickTransaction = (data) => {
 };
 
 /**
- * Giả lập API cho Advanced Check (Dữ liệu đầy đủ từ PaySim)
+ * Gọi API thật cho Advanced Check (Dữ liệu đầy đủ từ PaySim)
  * @param {Object} data - Dữ liệu đầu vào { step, type, amount, oldbalanceOrg, newbalanceOrig, oldbalanceDest, newbalanceDest }
- * @returns {Promise} Trả về kết quả phân tích sau 1.5s - 2s
+ * @returns {Promise} Trả về kết quả phân tích từ Backend
  */
-export const checkAdvancedTransaction = (data) => {
-  return new Promise((resolve) => {
-    // Giả lập độ trễ mạng ngẫu nhiên từ 1.5 giây đến 2 giây
-    const delay = 1500 + Math.random() * 500;
+export const checkAdvancedTransaction = async (data) => {
+  try {
+    const response = await fetch('http://localhost:8000/api/v1/predict/advanced', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        step: Number(data.step) || 0,
+        type: data.type || '',
+        amount: Number(data.amount) || 0,
+        oldbalanceOrg: Number(data.oldbalanceOrg) || 0,
+        newbalanceOrig: Number(data.newbalanceOrig) || 0,
+        oldbalanceDest: Number(data.oldbalanceDest) || 0,
+        newbalanceDest: Number(data.newbalanceDest) || 0
+      }),
+    });
 
-    setTimeout(() => {
-      let riskScore = 5;
-      const explanations = [];
+    if (!response.ok) {
+      throw new Error(`Lỗi server: ${response.status}`);
+    }
 
-      const amount = Number(data.amount) || 0;
-      const type = data.type || '';
-      const oldbalanceOrg = Number(data.oldbalanceOrg) || 0;
-      const newbalanceOrig = Number(data.newbalanceOrig) || 0;
-      
-      // Rule 1: Loại giao dịch rủi ro
-      if (['TRANSFER', 'CASH_OUT'].includes(type.toUpperCase())) {
-        riskScore += 15;
-        explanations.push(`Phát hiện loại giao dịch '${type}' nằm trong nhóm rủi ro gian lận theo tập dữ liệu PaySim.`);
-      }
-
-      // Rule 2: Số tiền quá lớn
-      if (amount > 200000) {
-        riskScore += 25;
-        explanations.push(`Số tiền chuyển đi (${amount.toLocaleString()}) rất lớn.`);
-      }
-
-      // Rule 3: Bất thường trong kế toán (Số dư không khớp)
-      // Về mặt logic: Số dư cũ - Số tiền chuyển = Số dư mới
-      const expectedNewOrig = oldbalanceOrg - amount;
-      
-      // Nếu số dư thực tế khác với số dư tính toán (cho phép sai số 1 chút do float hoặc phí, nhưng ở đây dùng 10 cho an toàn)
-      if (Math.abs(expectedNewOrig - newbalanceOrig) > 10) {
-        riskScore += 45;
-        explanations.push('Nghiêm trọng: Có sự bất thường về số dư tài khoản người gửi. (Số dư cũ trừ số tiền chuyển không bằng số dư mới).');
-      }
-
-      // Rule 4: Chuyển cạn kiệt tài khoản (Rút sạch tiền)
-      if (amount > 0 && amount === oldbalanceOrg && newbalanceOrig === 0) {
-        riskScore += 20;
-        explanations.push('Cảnh báo: Giao dịch này đã rút toàn bộ (rút cạn) số dư của tài khoản người gửi.');
-      }
-
-      // Đảm bảo điểm số luôn nằm trong khoảng 0 - 100
-      riskScore = Math.min(Math.max(riskScore, 0), 100);
-      const isFraud = riskScore >= 75;
-
-      resolve({
-        status: 'success',
-        data: {
-          riskLevel: determineRiskLevel(riskScore),
-          riskScore: Number(riskScore.toFixed(1)),
-          fraudProbability: Number((riskScore / 100).toFixed(3)),
-          isFraud: isFraud,
-          explanations: explanations.length > 0 
-            ? explanations 
-            : ['Các chỉ số tài chính hoàn toàn khớp và logic. Không tìm thấy rủi ro.']
-        }
-      });
-    }, delay);
-  });
+    const result = await response.json();
+    
+    // Đóng gói lại kết quả cho giống cấu trúc cũ để UI không bị vỡ
+    return {
+      status: 'success',
+      data: result
+    };
+  } catch (error) {
+    console.error("Lỗi khi gọi API AI:", error);
+    // Quăng lỗi rõ ràng để UI có thể bắt
+    throw new Error("Không thể kết nối đến AI Server. Vui lòng kiểm tra xem Backend FastAPI đã được bật chưa (chạy lệnh: uvicorn main:app --reload).");
+  }
 };
