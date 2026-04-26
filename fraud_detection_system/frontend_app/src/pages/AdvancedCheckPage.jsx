@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Loader2, AlertCircle, CheckCircle, ShieldAlert, TerminalSquare, Database, Activity } from 'lucide-react';
 import { checkAdvancedTransaction } from '../services/mockApi';
-
+import toast from 'react-hot-toast';
 const AdvancedCheckPage = () => {
   const [formData, setFormData] = useState({
     step: '1',
@@ -60,8 +60,17 @@ const AdvancedCheckPage = () => {
     try {
       const response = await checkAdvancedTransaction(formData);
       setResult(response.data);
+      
+      if (response.data.riskLevel === 'High') {
+        toast.error('Phát hiện rủi ro cao!', { duration: 4000 });
+      } else if (response.data.riskLevel === 'Low') {
+        toast.success('Giao dịch an toàn!');
+      } else {
+        toast('Giao dịch cần lưu ý', { icon: '⚠️' });
+      }
     } catch (error) {
       console.error('Lỗi khi kiểm tra giao dịch:', error);
+      toast.error('Lỗi kết nối tới Server AI!');
     } finally {
       setIsLoading(false);
     }
@@ -120,10 +129,49 @@ const AdvancedCheckPage = () => {
         
         {/* Cột Form (Chiếm 5 phần) */}
         <div className="lg:col-span-5 bg-white rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] border border-gray-100 p-6 h-fit">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
-            <TerminalSquare className="w-5 h-5 text-gray-500" />
-            Tham số đầu vào (Features)
-          </h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+              <TerminalSquare className="w-5 h-5 text-gray-500" />
+              Tham số đầu vào (Features)
+            </h2>
+          </div>
+
+          {/* Demo Scenarios */}
+          <div className="mb-6 bg-slate-50 rounded-lg p-3 border border-slate-100">
+            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2.5">Demo Scenarios</div>
+            <div className="flex flex-wrap gap-2">
+              <button 
+                type="button" 
+                onClick={() => {
+                  setFormData({ step: '1', type: 'TRANSFER', amount: '500000', oldbalanceOrg: '500000', newbalanceOrig: '0', oldbalanceDest: '0', newbalanceDest: '0' });
+                  setErrors({});
+                }}
+                className="text-xs font-medium px-2.5 py-1.5 border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 rounded transition-colors"
+              >
+                Rút cạn tài khoản
+              </button>
+              <button 
+                type="button" 
+                onClick={() => {
+                  setFormData({ step: '1', type: 'PAYMENT', amount: '1500', oldbalanceOrg: '20000', newbalanceOrig: '18500', oldbalanceDest: '0', newbalanceDest: '0' });
+                  setErrors({});
+                }}
+                className="text-xs font-medium px-2.5 py-1.5 border border-emerald-200 text-emerald-600 bg-white hover:bg-emerald-50 rounded transition-colors"
+              >
+                Chuyển hợp lệ
+              </button>
+              <button 
+                type="button" 
+                onClick={() => {
+                  setFormData({ step: '1', type: 'CASH_OUT', amount: '850000', oldbalanceOrg: '850000', newbalanceOrig: '0', oldbalanceDest: '100000', newbalanceDest: '100000' });
+                  setErrors({});
+                }}
+                className="text-xs font-medium px-2.5 py-1.5 border border-amber-200 text-amber-600 bg-white hover:bg-amber-50 rounded transition-colors"
+              >
+                Lệch số dư đích
+              </button>
+            </div>
+          </div>
           
           <form onSubmit={handleSubmit} className="space-y-5">
             

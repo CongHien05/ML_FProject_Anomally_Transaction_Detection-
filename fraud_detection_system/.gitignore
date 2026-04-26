@@ -1,0 +1,40 @@
+# Node modules
+node_modules/
+dist/
+build/
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+env.bak/
+venv.bak/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Machine Learning Data & Models
+*.csv
+*.tsv
+*.dat
+*.pkl
+*.h5
+*.hdf5
+*.joblib
+machine_learning/data/
+machine_learning/models/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
