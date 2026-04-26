@@ -1,0 +1,36 @@
+# =========================
+# 1. FRONTEND (React/Node)
+# =========================
+frontend_app/node_modules/
+frontend_app/dist/
+.env
+
+# =========================
+# 2. PYTHON (Backend & ML)
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# =========================
+# 3. JUPYTER NOTEBOOK
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# 4. DATA & MODELS (Bắt buộc)
+# =========================
+# Tuyệt đối không đẩy file dữ liệu và mô hình nặng lên Git
+machine_learning/data/*.csv
+machine_learning/data/*.zip
+machine_learning/models/*.pkl
+machine_learning/models/*.joblib
+
+# =========================
+# 5. OS GENERATED FILES
+# =========================
+.DS_Store
+Thumbs.db
