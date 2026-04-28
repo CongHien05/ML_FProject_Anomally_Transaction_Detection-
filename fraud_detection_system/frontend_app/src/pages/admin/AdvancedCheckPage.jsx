@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Loader2, AlertCircle, CheckCircle, ShieldAlert, TerminalSquare, Database, Activity } from 'lucide-react';
-import { checkAdvancedTransaction } from '../../services/mockApi';
+import { predictTransaction } from '../../services/api';
 import toast from 'react-hot-toast';
 const AdvancedCheckPage = () => {
   const [formData, setFormData] = useState({
@@ -58,7 +58,7 @@ const AdvancedCheckPage = () => {
     setResult(null);
 
     try {
-      const response = await checkAdvancedTransaction(formData);
+      const response = await predictTransaction(formData);
       setResult(response.data);
       
       if (response.data.riskLevel === 'High') {
