@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Users, Activity, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { StatCard } from '../components/ui/StatCard';
-import { StatusBadge, StatusType } from '../components/ui/StatusBadge';
-import { getAdminDashboard, getAdminFraudPredictions } from '../services/api';
-import { formatVnd } from '../services/auth';
+import { StatCard } from '../../components/ui/StatCard';
+import { StatusBadge, StatusType } from '../../components/ui/StatusBadge';
+import { getAdminDashboard, getAdminFraudPredictions } from '../../services/api';
+import { formatVnd } from '../../services/auth';
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();

@@ -7,8 +7,8 @@ import {
   searchUserByUsername,
   verifyTransactionOtp,
   requestTransactionOtp,
-} from '../services/api';
-import { formatVnd, formatVndInput, getStoredUser, parseVndAmount, saveUser } from '../services/auth';
+} from '../../services/api';
+import { formatVnd, formatVndInput, getStoredUser, parseVndAmount, saveUser } from '../../services/auth';
 
 export const TransferPage = () => {
   const [currentUser, setCurrentUser] = useState(() => getStoredUser());

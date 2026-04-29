@@ -13,8 +13,8 @@ import {
   X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { StatusBadge, StatusType } from '../components/ui/StatusBadge';
-import { getAdminAlerts, markAdminAlertRead, reviewFraudPrediction } from '../services/api';
+import { StatusBadge, StatusType } from '../../components/ui/StatusBadge';
+import { getAdminAlerts, markAdminAlertRead, reviewFraudPrediction } from '../../services/api';
 
 interface AlertItem {
   id: number;

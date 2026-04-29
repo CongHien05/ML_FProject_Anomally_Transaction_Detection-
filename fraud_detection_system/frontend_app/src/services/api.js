@@ -53,6 +53,21 @@ export const login = async ({ username, password }) => {
   return response.json();
 };
 
+export const register = async (data) => {
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `Registration failed: ${response.status}`);
+  }
+
+  return response.json();
+};
+
 export const getCurrentUser = async () => {
   const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
     headers: authHeaders(),

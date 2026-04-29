@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
-import { login } from '../services/api';
-import { saveAuth } from '../services/auth';
+import { useNavigate, Link } from 'react-router-dom';
+import { ShieldCheck, Lock, User, ArrowRight, Loader2, Phone, Type } from 'lucide-react';
+import { register } from '../../services/api';
 
-export const LoginPage = () => {
+export const RegisterPage = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({ username: '', password: '' });
+  const [formData, setFormData] = useState({ username: '', password: '', full_name: '', phone_number: '' });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -22,11 +21,10 @@ export const LoginPage = () => {
     setError('');
 
     try {
-      const result = await login(formData);
-      saveAuth(result);
-      navigate(result.user.role === 'ADMIN' ? '/admin' : '/user');
+      await register(formData);
+      navigate('/login');
     } catch (err) {
-      setError(err.message || 'Login failed');
+      setError(err.message || 'Registration failed');
     } finally {
       setIsLoading(false);
     }
@@ -46,10 +44,10 @@ export const LoginPage = () => {
           </div>
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 tracking-tight">
-          Welcome to FinGuard
+          Create an Account
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Sign in to access your secure dashboard
+          Join FinGuard today
         </p>
       </div>
 
@@ -79,6 +77,50 @@ export const LoginPage = () => {
             </div>
 
             <div>
+              <label htmlFor="full_name" className="block text-sm font-medium text-gray-700">
+                Full Name
+              </label>
+              <div className="mt-2 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Type className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="full_name"
+                  name="full_name"
+                  type="text"
+                  autoComplete="name"
+                  value={formData.full_name}
+                  onChange={handleChange}
+                  required
+                  className="block w-full pl-10 sm:text-sm border-gray-300 rounded-xl py-3 border focus:ring-blue-500 focus:border-blue-500 bg-gray-50 hover:bg-white transition-colors"
+                  placeholder="Alice Smith"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700">
+                Phone Number
+              </label>
+              <div className="mt-2 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Phone className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="phone_number"
+                  name="phone_number"
+                  type="text"
+                  autoComplete="tel"
+                  value={formData.phone_number}
+                  onChange={handleChange}
+                  required
+                  className="block w-full pl-10 sm:text-sm border-gray-300 rounded-xl py-3 border focus:ring-blue-500 focus:border-blue-500 bg-gray-50 hover:bg-white transition-colors"
+                  placeholder="+1234567890"
+                />
+              </div>
+            </div>
+
+            <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Password
               </label>
@@ -90,12 +132,12 @@ export const LoginPage = () => {
                   id="password"
                   name="password"
                   type="password"
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   value={formData.password}
                   onChange={handleChange}
                   required
                   className="block w-full pl-10 sm:text-sm border-gray-300 rounded-xl py-3 border focus:ring-blue-500 focus:border-blue-500 bg-gray-50 hover:bg-white transition-colors"
-                  placeholder="123456"
+                  placeholder="••••••"
                 />
               </div>
             </div>
@@ -106,24 +148,11 @@ export const LoginPage = () => {
               </div>
             )}
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                  Remember me
-                </label>
-              </div>
-
-              <div className="text-sm">
-                <a href="#" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
-                  Forgot password?
-                </a>
-              </div>
+            <div className="flex items-center justify-center text-sm">
+              <span className="text-gray-600">Already have an account?</span>
+              <Link to="/login" className="ml-1 font-medium text-blue-600 hover:text-blue-500 transition-colors">
+                Sign in
+              </Link>
             </div>
 
             <div>
@@ -135,11 +164,11 @@ export const LoginPage = () => {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 w-5 h-5 animate-spin" />
-                    Signing in
+                    Creating account
                   </>
                 ) : (
                   <>
-                    Sign in
+                    Sign up
                     <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </>
                 )}

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Download, History, Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { StatusBadge, StatusType } from '../components/ui/StatusBadge';
-import { getCurrentUser, getMyTransactions } from '../services/api';
-import { formatVnd, getStoredUser, saveUser } from '../services/auth';
+import { StatusBadge, StatusType } from '../../components/ui/StatusBadge';
+import { getCurrentUser, getMyTransactions } from '../../services/api';
+import { formatVnd, getStoredUser, saveUser } from '../../services/auth';
 
 const formatTime = (value: string) =>
   new Intl.DateTimeFormat('vi-VN', {

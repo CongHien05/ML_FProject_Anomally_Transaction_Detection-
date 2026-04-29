@@ -100,6 +100,13 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+    full_name: str
+    phone_number: Optional[str] = None
+
+
 class UserProfileResponse(BaseModel):
     id: int
     username: str

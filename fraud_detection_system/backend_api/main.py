@@ -4,7 +4,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from auth_service import build_user_profile, create_access_token, get_current_user, require_admin, verify_password
+from auth_service import build_user_profile, create_access_token, get_current_user, require_admin, verify_password, hash_password
 from database import get_db, init_db
 from ml_services import FraudDetectionService
 from models import Account, User
@@ -20,6 +20,7 @@ from schemas import (
     LoginResponse,
     OtpVerifyRequest,
     PredictionResponse,
+    RegisterRequest,
     RequestPhoneOtpRequest,
     RequestPhoneOtpResponse,
     RequestTransactionOtpRequest,
@@ -95,6 +96,45 @@ async def login(data: LoginRequest, db: Session = Depends(get_db)):
         access_token=create_access_token(user),
         user=build_user_profile(db, user),
     )
+
+
+@app.post("/api/v1/auth/register", response_model=UserProfileResponse)
+async def register_user(data: RegisterRequest, db: Session = Depends(get_db)):
+    # Check if username already exists
+    existing_user = db.query(User).filter(User.username == data.username).one_or_none()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already registered")
+        
+    # Check if phone number already exists
+    if data.phone_number:
+        existing_phone = db.query(User).filter(User.phone_number == data.phone_number).one_or_none()
+        if existing_phone:
+            raise HTTPException(status_code=400, detail="Phone number already registered")
+
+    # Create new user
+    new_user = User(
+        username=data.username,
+        password_hash=hash_password(data.password),
+        full_name=data.full_name,
+        phone_number=data.phone_number,
+        role="USER",
+        status="ACTIVE"
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    # Create an account for the new user
+    new_account = Account(
+        user_id=new_user.id,
+        balance=500000.0, # Give a starting balance of 500,000 VND to test transactions
+        currency="VND",
+        status="ACTIVE"
+    )
+    db.add(new_account)
+    db.commit()
+
+    return build_user_profile(db, new_user)
 
 
 @app.get("/api/v1/auth/me", response_model=UserProfileResponse)

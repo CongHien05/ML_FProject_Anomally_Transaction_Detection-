@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { List, Loader2 } from 'lucide-react';
-import { StatusBadge, StatusType } from '../components/ui/StatusBadge';
-import { getAllTransactions } from '../services/api';
-import { formatVnd } from '../services/auth';
+import { StatusBadge, StatusType } from '../../components/ui/StatusBadge';
+import { getAllTransactions } from '../../services/api';
+import { formatVnd } from '../../services/auth';
 
 const formatTime = (value: string) =>
   new Intl.DateTimeFormat('vi-VN', {
