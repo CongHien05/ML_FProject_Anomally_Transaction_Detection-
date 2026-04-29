@@ -6,19 +6,20 @@ import { UserLayout } from '../components/layout/UserLayout';
 import { AdminLayout } from '../components/layout/AdminLayout';
 
 // Shared Pages
-import { LoginPage } from '../pages/LoginPage';
-import { NotFoundPage } from '../pages/NotFoundPage';
+import { LoginPage } from '../pages/auth/LoginPage';
+import { RegisterPage } from '../pages/auth/RegisterPage';
+import { NotFoundPage } from '../pages/errors/NotFoundPage';
 
 // User Pages
-import { UserDashboard } from '../pages/UserDashboard';
-import { TransferPage } from '../pages/TransferPage';
-import { CashOutPage } from '../pages/CashOutPage';
-import { HistoryPage } from '../pages/HistoryPage';
+import { UserDashboard } from '../pages/user/UserDashboard';
+import { TransferPage } from '../pages/user/TransferPage';
+import { CashOutPage } from '../pages/user/CashOutPage';
+import { HistoryPage } from '../pages/user/HistoryPage';
 
 // Admin Pages
-import { AdminDashboard } from '../pages/AdminDashboard';
-import { AlertsPage } from '../pages/AlertsPage';
-import { AllTransactionsPage } from '../pages/AllTransactionsPage';
+import { AdminDashboard } from '../pages/admin/AdminDashboard';
+import { AlertsPage } from '../pages/admin/AlertsPage';
+import { AllTransactionsPage } from '../pages/admin/AllTransactionsPage';
 
 export const AppRoutes = () => {
   return (
@@ -28,6 +29,7 @@ export const AppRoutes = () => {
       
       {/* Public Routes (No Layout) */}
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
       
       {/* User Portal Routes */}
       <Route path="/user" element={<UserLayout />}>

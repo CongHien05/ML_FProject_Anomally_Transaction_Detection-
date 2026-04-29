@@ -1,7 +1,6 @@
 import os
 import joblib
 import pandas as pd
-import numpy as np
 from schemas import TransactionRequest, PredictionResponse
 
 class FraudDetectionService:
@@ -14,8 +13,9 @@ class FraudDetectionService:
         return cls._instance
 
     def _load_model(self):
+
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        model_path = os.path.join(base_dir, "..", "machine_learning", "models", "fraud_rf_model_tuned.pkl")
+        model_path = os.path.join(base_dir, "..", "machine_learning", "models", "fraud_detection_pipeline.pkl")
         model_path = os.path.normpath(model_path)
         
         if not os.path.exists(model_path):
@@ -32,42 +32,28 @@ class FraudDetectionService:
         errorBalanceOrig = tx.newbalanceOrig + tx.amount - tx.oldbalanceOrg
         errorBalanceDest = tx.oldbalanceDest + tx.amount - tx.newbalanceDest
 
-        tx_type = tx.type.upper()
-        
-        # Build 20 features expected by the random forest model
         data = {
-            'categorical__type_CASH_IN': 1.0 if tx_type == 'CASH_IN' else 0.0,
-            'categorical__type_CASH_OUT': 1.0 if tx_type == 'CASH_OUT' else 0.0,
-            'categorical__type_DEBIT': 1.0 if tx_type == 'DEBIT' else 0.0,
-            'categorical__type_PAYMENT': 1.0 if tx_type == 'PAYMENT' else 0.0,
-            'categorical__type_TRANSFER': 1.0 if tx_type == 'TRANSFER' else 0.0,
-            'numeric__step': float(tx.step),
-            'numeric__amount': float(tx.amount),
-            'numeric__oldbalanceOrg': float(tx.oldbalanceOrg),
-            'numeric__newbalanceOrig': float(tx.newbalanceOrig),
-            'numeric__oldbalanceDest': float(tx.oldbalanceDest),
-            'numeric__newbalanceDest': float(tx.newbalanceDest),
-            'numeric__log_amount': float(np.log1p(tx.amount)),
-            'numeric__amount_is_zero': 1.0 if tx.amount == 0 else 0.0,
-            'numeric__oldbalanceOrg_is_zero': 1.0 if tx.oldbalanceOrg == 0 else 0.0,
-            'numeric__dest_balance_is_zero': 1.0 if (tx.oldbalanceDest == 0 and tx.newbalanceDest == 0) else 0.0,
-            'numeric__origin_balance_delta': float(tx.newbalanceOrig - tx.oldbalanceOrg),
-            'numeric__destination_balance_delta': float(tx.newbalanceDest - tx.oldbalanceDest),
-            'numeric__errorBalanceOrig': float(errorBalanceOrig),
-            'numeric__errorBalanceDest': float(errorBalanceDest),
-            'numeric__amount_to_origin_balance_ratio': float((tx.amount / tx.oldbalanceOrg) if tx.oldbalanceOrg > 0 else 0.0)
+            "step": int(tx.step),
+            "type": tx.type.upper(),
+            "amount": float(tx.amount),
+            "oldbalanceOrg": float(tx.oldbalanceOrg),
+            "newbalanceOrig": float(tx.newbalanceOrig),
+            "oldbalanceDest": float(tx.oldbalanceDest),
+            "newbalanceDest": float(tx.newbalanceDest),
+            "errorBalanceOrig": float(errorBalanceOrig),
+            "errorBalanceDest": float(errorBalanceDest),
         }
         
         expected_columns = [
-            'categorical__type_CASH_IN', 'categorical__type_CASH_OUT',
-            'categorical__type_DEBIT', 'categorical__type_PAYMENT',
-            'categorical__type_TRANSFER', 'numeric__step', 'numeric__amount',
-            'numeric__oldbalanceOrg', 'numeric__newbalanceOrig',
-            'numeric__oldbalanceDest', 'numeric__newbalanceDest', 'numeric__log_amount',
-            'numeric__amount_is_zero', 'numeric__oldbalanceOrg_is_zero',
-            'numeric__dest_balance_is_zero', 'numeric__origin_balance_delta',
-            'numeric__destination_balance_delta', 'numeric__errorBalanceOrig',
-            'numeric__errorBalanceDest', 'numeric__amount_to_origin_balance_ratio'
+            "step",
+            "type",
+            "amount",
+            "oldbalanceOrg",
+            "newbalanceOrig",
+            "oldbalanceDest",
+            "newbalanceDest",
+            "errorBalanceOrig",
+            "errorBalanceDest",
         ]
         
         return pd.DataFrame([data])[expected_columns]

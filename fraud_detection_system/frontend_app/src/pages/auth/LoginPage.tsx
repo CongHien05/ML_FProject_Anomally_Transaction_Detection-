@@ -1,16 +1,42 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Lock, Mail, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { ShieldCheck, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
+import { login } from '../../services/api';
+import { saveAuth } from '../../services/auth';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
+  const [formData, setFormData] = useState({ username: '', password: '' });
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setError('');
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const result = await login(formData);
+      saveAuth(result);
+      navigate(result.user.role === 'ADMIN' ? '/admin' : '/user');
+    } catch (err) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans relative overflow-hidden">
-      {/* Background decoration */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
-        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-blue-100/50 blur-3xl"></div>
-        <div className="absolute top-[60%] -right-[10%] w-[40%] h-[60%] rounded-full bg-indigo-100/40 blur-3xl"></div>
+        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-blue-100/50 blur-3xl" />
+        <div className="absolute top-[60%] -right-[10%] w-[40%] h-[60%] rounded-full bg-indigo-100/40 blur-3xl" />
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md z-10">
@@ -29,23 +55,25 @@ export const LoginPage = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md z-10">
         <div className="bg-white py-8 px-4 shadow-xl shadow-gray-200/50 sm:rounded-2xl sm:px-10 border border-gray-100">
-          <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); navigate('/user'); }}>
+          <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                Username
               </label>
               <div className="mt-2 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
+                  <User className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
+                  id="username"
+                  name="username"
+                  type="text"
+                  autoComplete="username"
+                  value={formData.username}
+                  onChange={handleChange}
                   required
                   className="block w-full pl-10 sm:text-sm border-gray-300 rounded-xl py-3 border focus:ring-blue-500 focus:border-blue-500 bg-gray-50 hover:bg-white transition-colors"
-                  placeholder="admin@finguard.com"
+                  placeholder="alice"
                 />
               </div>
             </div>
@@ -63,12 +91,20 @@ export const LoginPage = () => {
                   name="password"
                   type="password"
                   autoComplete="current-password"
+                  value={formData.password}
+                  onChange={handleChange}
                   required
                   className="block w-full pl-10 sm:text-sm border-gray-300 rounded-xl py-3 border focus:ring-blue-500 focus:border-blue-500 bg-gray-50 hover:bg-white transition-colors"
-                  placeholder="••••••••"
+                  placeholder="123456"
                 />
               </div>
             </div>
+
+            {error && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                {error}
+              </div>
+            )}
 
             <div className="flex items-center justify-between">
               <div className="flex items-center">
@@ -90,13 +126,30 @@ export const LoginPage = () => {
               </div>
             </div>
 
+            <div className="flex items-center justify-center text-sm">
+              <span className="text-gray-600">Don't have an account?</span>
+              <Link to="/register" className="ml-1 font-medium text-blue-600 hover:text-blue-500 transition-colors">
+                Sign up
+              </Link>
+            </div>
+
             <div>
               <button
                 type="submit"
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors group"
+                disabled={isLoading}
+                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors group"
               >
-                Sign in
-                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 w-5 h-5 animate-spin" />
+                    Signing in
+                  </>
+                ) : (
+                  <>
+                    Sign in
+                    <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
               </button>
             </div>
           </form>
