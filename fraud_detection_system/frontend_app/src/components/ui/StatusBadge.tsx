@@ -1,6 +1,15 @@
 import React from 'react';
 
-export type StatusType = 'COMPLETED' | 'PENDING' | 'FAILED' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type StatusType =
+  | 'COMPLETED'
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'FAILED'
+  | 'BLOCKED'
+  | 'LOW'
+  | 'MEDIUM'
+  | 'HIGH'
+  | 'CRITICAL';
 
 interface StatusBadgeProps {
   status: StatusType;
@@ -13,9 +22,11 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
       case 'LOW':
         return 'bg-emerald-100 text-emerald-700 border-emerald-200';
       case 'PENDING':
+      case 'PROCESSING':
       case 'MEDIUM':
         return 'bg-amber-100 text-amber-700 border-amber-200';
       case 'FAILED':
+      case 'BLOCKED':
       case 'HIGH':
       case 'CRITICAL':
         return 'bg-rose-100 text-rose-700 border-rose-200';
