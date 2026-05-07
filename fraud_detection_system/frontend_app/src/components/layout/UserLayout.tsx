@@ -1,5 +1,6 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
+import { UserChatBot } from '../chat/UserChatBot';
 import { Navbar } from './Navbar';
 import { UserSidebar } from './UserSidebar';
 
@@ -15,6 +16,7 @@ export const UserLayout = () => {
           </div>
         </main>
       </div>
+      <UserChatBot />
     </div>
   );
 };

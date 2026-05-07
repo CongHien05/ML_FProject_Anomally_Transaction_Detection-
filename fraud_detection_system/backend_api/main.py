@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from auth_service import build_user_profile, create_access_token, get_current_user, require_admin, verify_password, hash_password
 from database import get_db, init_db
+from chat_service import answer_transaction_chat, build_user_chat_rag_snapshot
 from ml_services import FraudDetectionService
 from models import Account, User
 from otp_service import request_phone_otp, verify_phone_otp, request_transaction_otp, verify_transaction_otp
@@ -15,6 +16,9 @@ from schemas import (
     AdminReviewRequest,
     AdminReviewResponse,
     AlertResponse,
+    ChatRequest,
+    ChatResponse,
+    ChatRagResponse,
     CreateTransactionRequest,
     LoginRequest,
     LoginResponse,
@@ -154,6 +158,29 @@ async def predict_advanced(data: TransactionRequest) -> PredictionResponse:
         raise HTTPException(status_code=503, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Prediction error: {exc}")
+
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat(
+    data: ChatRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    question = data.question or data.message or ""
+    return answer_transaction_chat(
+        db=db,
+        user=current_user,
+        question=question,
+        client_history=[item.model_dump() if hasattr(item, "model_dump") else item.dict() for item in data.message_history],
+    )
+
+
+@app.get("/api/chat/rag", response_model=ChatRagResponse)
+async def chat_rag(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return build_user_chat_rag_snapshot(db, current_user)
 
 
 @app.post("/api/v1/transactions", response_model=TransactionDecisionResponse)
@@ -326,3 +353,9 @@ async def list_dev_accounts(
         )
         for account, user in rows
     ]
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="127.0.0.1", port=8000)

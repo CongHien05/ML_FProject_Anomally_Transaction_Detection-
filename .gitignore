@@ -28,6 +28,7 @@ machine_learning/data/*.csv
 machine_learning/data/*.zip
 machine_learning/models/*.pkl
 machine_learning/models/*.joblib
+fraud_detection_system/backend_api/rag_store/
 
 # =========================
 # 5. OS GENERATED FILES

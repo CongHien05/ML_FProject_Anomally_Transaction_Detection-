@@ -11,6 +11,7 @@
 import { parseVndAmount } from './auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const CHAT_API_URL = import.meta.env.VITE_CHAT_API_URL || `${API_BASE_URL}/api/chat`;
 
 const authHeaders = (withJson = false) => {
   const token = localStorage.getItem('access_token');
@@ -22,7 +23,7 @@ const authHeaders = (withJson = false) => {
 
 const readError = async (response, fallback) => {
   const err = await response.json().catch(() => ({}));
-  return new Error(err.detail || `${fallback}: ${response.status}`);
+  return new Error(err.detail || err.message || err.error || `${fallback}: ${response.status}`);
 };
 
 /**
@@ -251,6 +252,45 @@ export const getAdminFraudPredictions = async () => {
   }
 
   return response.json();
+};
+
+export const chatWithAssistant = async ({ message, messageHistory = [] }) => {
+  try {
+    const response = await fetch(CHAT_API_URL, {
+      method: 'POST',
+      headers: authHeaders(true),
+      body: JSON.stringify({
+        question: message,
+        message_history: messageHistory,
+      }),
+    });
+
+    if (!response.ok) {
+      throw await readError(response, 'Chat assistant failed');
+    }
+
+    const result = await response.json();
+    if (import.meta.env.DEV) {
+      console.info('[chat assistant]', {
+        llm_provider: result.llm_provider,
+        llm_status: result.llm_status,
+        llm_model: result.llm_model,
+      });
+    }
+    return (
+      result.answer ||
+      result.response ||
+      result.message ||
+      result.data?.answer ||
+      result.data?.response ||
+      'Tro ly da nhan cau hoi nhung chua tra ve noi dung phu hop.'
+    );
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error(`Khong ket noi duoc API chat: ${CHAT_API_URL}`);
+    }
+    throw error;
+  }
 };
 
 export const reviewFraudPrediction = async ({ predictionId, actionTaken, reviewNotes }) => {

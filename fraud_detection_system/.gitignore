@@ -29,6 +29,7 @@ venv.bak/
 *.joblib
 machine_learning/data/
 machine_learning/models/
+backend_api/rag_store/
 
 # OS generated files
 .DS_Store

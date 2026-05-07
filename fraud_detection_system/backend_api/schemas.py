@@ -195,3 +195,51 @@ class RequestTransactionOtpRequest(BaseModel):
 class VerifyTransactionOtpRequest(BaseModel):
     phone_number: str = Field(..., pattern=r'^\+?1?\d{9,15}$')
     otp_code: str = Field(..., pattern=r'^\d{6}$')
+
+
+class ChatMessageItem(BaseModel):
+    role: str = Field(..., pattern="^(user|assistant)$")
+    content: str
+
+
+class ChatRequest(BaseModel):
+    question: Optional[str] = None
+    message: Optional[str] = None
+    message_history: list[ChatMessageItem] = Field(default_factory=list)
+
+
+class ChatSource(BaseModel):
+    kind: str
+    transaction_id: Optional[int] = None
+    request_id: Optional[str] = None
+    snippet: str
+    created_at: Optional[str] = None
+    score: Optional[float] = None
+
+
+class ChatResponse(BaseModel):
+    success: bool = True
+    answer: str
+    answer_status: str
+    scope: str = "current_user_transactions"
+    rag_document_id: Optional[str] = None
+    rag_generated_at: Optional[str] = None
+    rag_file_name: Optional[str] = None
+    rag_write_status: Optional[str] = None
+    llm_provider: Optional[str] = None
+    llm_status: Optional[str] = None
+    llm_model: Optional[str] = None
+    sources: list[ChatSource] = Field(default_factory=list)
+
+
+class ChatRagResponse(BaseModel):
+    success: bool = True
+    document_id: str
+    generated_at: str
+    scope: str = "current_authenticated_user_only"
+    file_name: Optional[str] = None
+    write_status: str = "written"
+    account_count: int
+    transaction_count: int
+    included_transaction_count: int
+    document: dict
