@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ShieldAlert, List, LogOut } from 'lucide-react';
+import { LayoutDashboard, ShieldAlert, List, LogOut, UsersRound } from 'lucide-react';
 import { getCurrentUser } from '../../services/api';
 import { clearAuth, getStoredUser, saveUser } from '../../services/auth';
 
@@ -30,15 +30,16 @@ export const AdminSidebar = () => {
     { name: 'Overview', path: '/admin/dashboard', icon: LayoutDashboard },
     { name: 'Fraud Alerts', path: '/admin/alerts', icon: ShieldAlert },
     { name: 'All Transactions', path: '/admin/transactions', icon: List },
+    { name: 'Accounts', path: '/admin/accounts', icon: UsersRound },
   ];
 
-  return (
-    <aside className="w-64 bg-slate-900 border-r border-slate-800 h-[calc(100vh-4rem)] sticky top-16 flex flex-col shadow-lg hidden lg:flex">
-      <div className="flex-1 overflow-y-auto py-6 px-4">
-        <div className="mb-6 px-4">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Backoffice System</p>
-        </div>
-        <nav className="space-y-1.5">
+ return (
+    <aside className="w-64 bg-slate-900 border-r border-slate-800 h-[calc(100vh-4rem)] sticky top-16 flex-col shadow-lg hidden lg:flex">
+      <div className="flex-1 overflow-y-auto py-5 px-3">
+        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-3 mb-4">
+          Backoffice System
+        </p>
+        <nav className="space-y-0.5">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -46,16 +47,16 @@ export const AdminSidebar = () => {
                 key={item.name}
                 to={item.path}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all duration-200 ease-out ${
+                  `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 ${
                     isActive
-                      ? 'bg-indigo-600 text-white font-semibold shadow-sm'
-                      : 'text-slate-300 font-medium hover:bg-slate-800 hover:text-white hover:-translate-y-0.5'
+                      ? 'bg-indigo-600 text-white font-semibold shadow-md'
+                      : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                   }`
                 }
               >
                 {({ isActive }) => (
                   <>
-                    <Icon className={`w-5 h-5 transition-colors duration-200 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                    <Icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? 'text-white' : 'text-slate-500'}`} />
                     {item.name}
                   </>
                 )}
@@ -65,31 +66,30 @@ export const AdminSidebar = () => {
         </nav>
       </div>
 
-      <div className="p-4 border-t border-slate-800">
-        <div className="mb-3 rounded-xl border border-slate-800 bg-slate-950 p-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600 text-sm font-bold text-white">
-              {(user?.full_name || user?.username || 'A').slice(0, 1).toUpperCase()}
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white">{user?.full_name || 'Admin User'}</p>
-              <p className="truncate text-xs text-slate-500">@{user?.username || 'admin'} - {user?.role || 'ADMIN'}</p>
-            </div>
+      <div className="p-3 border-t border-slate-800 space-y-2">
+        <div className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">
+            {(user?.full_name || user?.username || 'A').slice(0, 1).toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-white leading-none">
+              {user?.full_name || 'Admin User'}
+            </p>
+            <p className="truncate text-xs text-slate-500 mt-1">
+              @{user?.username || 'admin'} · {user?.role || 'ADMIN'}
+            </p>
           </div>
         </div>
-
         <button
           type="button"
-          onClick={() => {
-            clearAuth();
-            navigate('/login');
-          }}
-          className="flex w-full items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-rose-500/10 hover:text-rose-400 hover:-translate-y-0.5 transition-all duration-200 ease-out group"
+          onClick={() => { clearAuth(); navigate('/login'); }}
+          className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-rose-500/10 hover:text-rose-400 transition-all duration-150 group"
         >
-          <LogOut className="w-5 h-5 text-slate-500 group-hover:text-rose-400 transition-colors" />
+          <LogOut className="w-[18px] h-[18px] text-slate-500 group-hover:text-rose-400 transition-colors" />
           Sign Out
         </button>
       </div>
     </aside>
   );
+
 };

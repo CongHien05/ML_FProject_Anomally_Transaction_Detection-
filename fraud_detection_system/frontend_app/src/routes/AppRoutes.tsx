@@ -20,6 +20,7 @@ import { HistoryPage } from '../pages/user/HistoryPage';
 import { AdminDashboard } from '../pages/admin/AdminDashboard';
 import { AlertsPage } from '../pages/admin/AlertsPage';
 import { AllTransactionsPage } from '../pages/admin/AllTransactionsPage';
+import { AccountsPage } from '../pages/admin/AccountsPage';
 
 export const AppRoutes = () => {
   return (
@@ -46,6 +47,7 @@ export const AppRoutes = () => {
         <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="alerts" element={<AlertsPage />} />
         <Route path="transactions" element={<AllTransactionsPage />} />
+        <Route path="accounts" element={<AccountsPage />} />
       </Route>
 
       {/* Catch-all */}

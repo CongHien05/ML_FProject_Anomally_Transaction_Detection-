@@ -6,6 +6,9 @@ export type StatusType =
   | 'PROCESSING'
   | 'FAILED'
   | 'BLOCKED'
+  | 'ACTIVE'
+  | 'FROZEN'
+  | 'BANNED'
   | 'LOW'
   | 'MEDIUM'
   | 'HIGH'
@@ -19,14 +22,17 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
   const getStatusStyles = (status: StatusType) => {
     switch (status) {
       case 'COMPLETED':
+      case 'ACTIVE':
       case 'LOW':
         return 'bg-emerald-100 text-emerald-700 border-emerald-200';
       case 'PENDING':
       case 'PROCESSING':
       case 'MEDIUM':
+      case 'FROZEN':
         return 'bg-amber-100 text-amber-700 border-amber-200';
       case 'FAILED':
       case 'BLOCKED':
+      case 'BANNED':
       case 'HIGH':
       case 'CRITICAL':
         return 'bg-rose-100 text-rose-700 border-rose-200';

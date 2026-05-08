@@ -82,9 +82,18 @@ class AccountResponse(BaseModel):
     user_id: int
     username: str
     full_name: str
+    user_status: str
     balance: float
     currency: str
     status: str
+
+
+class AccountStatusUpdateRequest(BaseModel):
+    status: str = Field(..., pattern="^(ACTIVE|FROZEN)$")
+
+
+class UserStatusUpdateRequest(BaseModel):
+    status: str = Field(..., pattern="^(ACTIVE|BANNED)$")
 
 
 class UserCredentialResponse(BaseModel):

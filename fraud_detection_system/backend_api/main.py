@@ -12,6 +12,7 @@ from models import Account, User
 from otp_service import request_phone_otp, verify_phone_otp, request_transaction_otp, verify_transaction_otp
 from schemas import (
     AccountResponse,
+    AccountStatusUpdateRequest,
     AdminDashboardResponse,
     AdminReviewRequest,
     AdminReviewResponse,
@@ -32,6 +33,7 @@ from schemas import (
     TransactionDecisionResponse,
     TransactionRequest,
     TransactionSummaryResponse,
+    UserStatusUpdateRequest,
     UserProfileResponse,
     VerifyPhoneOtpRequest,
     VerifyPhoneOtpResponse,
@@ -39,6 +41,7 @@ from schemas import (
 )
 from transaction_service import (
     create_transaction,
+    list_admin_accounts,
     get_admin_dashboard_summary,
     get_admin_alerts,
     get_high_risk_predictions,
@@ -46,6 +49,8 @@ from transaction_service import (
     list_user_transactions,
     mark_alert_read,
     review_fraud_prediction,
+    update_admin_account_status,
+    update_admin_user_status,
     verify_pending_transaction,
 )
 
@@ -304,6 +309,34 @@ async def read_admin_alert(
     return mark_alert_read(db, alert_id)
 
 
+@app.get("/api/v1/admin/accounts", response_model=list[AccountResponse])
+async def list_accounts_for_admin(
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return list_admin_accounts(db)
+
+
+@app.patch("/api/v1/admin/accounts/{account_id}/status", response_model=AccountResponse)
+async def set_admin_account_status(
+    account_id: int,
+    data: AccountStatusUpdateRequest,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return update_admin_account_status(db, account_id, data.status, admin)
+
+
+@app.patch("/api/v1/admin/users/{user_id}/status", response_model=AccountResponse)
+async def set_admin_user_status(
+    user_id: int,
+    data: UserStatusUpdateRequest,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return update_admin_user_status(db, user_id, data.status, admin)
+
+
 @app.get("/api/v1/users/search")
 async def search_user(
     username: str,
@@ -335,24 +368,7 @@ async def list_dev_accounts(
     _: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    rows = (
-        db.query(Account, User)
-        .join(User, Account.user_id == User.id)
-        .order_by(Account.id)
-        .all()
-    )
-    return [
-        AccountResponse(
-            id=account.id,
-            user_id=user.id,
-            username=user.username,
-            full_name=user.full_name,
-            balance=float(account.balance),
-            currency=account.currency,
-            status=account.status,
-        )
-        for account, user in rows
-    ]
+    return list_admin_accounts(db)
 
 
 if __name__ == "__main__":

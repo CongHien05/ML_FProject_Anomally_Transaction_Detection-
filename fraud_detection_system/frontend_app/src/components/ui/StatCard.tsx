@@ -31,7 +31,6 @@ export const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, tr
           <span className={`font-medium ${trendUp ? 'text-emerald-600' : 'text-rose-600'}`}>
             {trend}
           </span>
-          <span className="text-slate-500 ml-2">vs last month</span>
         </div>
       )}
     </div>

@@ -34,12 +34,12 @@ export const UserSidebar = () => {
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-slate-200 h-[calc(100vh-4rem)] sticky top-16 flex flex-col shadow-sm hidden lg:flex">
-      <div className="flex-1 overflow-y-auto py-6 px-4">
-        <div className="mb-6 px-4">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Personal Banking</p>
-        </div>
-        <nav className="space-y-1.5">
+    <aside className="w-64 bg-white border-r border-slate-200 h-[calc(100vh-4rem)] sticky top-16 flex-col shadow-sm hidden lg:flex">
+      <div className="flex-1 overflow-y-auto py-5 px-3">
+        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-3 mb-4">
+          Personal Banking
+        </p>
+        <nav className="space-y-0.5">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -47,16 +47,16 @@ export const UserSidebar = () => {
                 key={item.name}
                 to={item.path}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all duration-200 ease-out ${
+                  `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 ${
                     isActive
                       ? 'bg-indigo-50 text-indigo-700 font-semibold'
-                      : 'text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900 hover:-translate-y-0.5'
+                      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                   }`
                 }
               >
                 {({ isActive }) => (
                   <>
-                    <Icon className={`w-5 h-5 transition-colors duration-200 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} />
+                    <Icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? 'text-indigo-500' : 'text-slate-400'}`} />
                     {item.name}
                   </>
                 )}
@@ -66,35 +66,34 @@ export const UserSidebar = () => {
         </nav>
       </div>
 
-      <div className="p-4 border-t border-slate-200">
-        <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+      <div className="p-3 border-t border-slate-200 space-y-2">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600 text-sm font-bold text-white">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">
               {(user?.full_name || user?.username || 'U').slice(0, 1).toUpperCase()}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-900">{user?.full_name || 'Guest User'}</p>
-              <p className="truncate text-xs text-slate-500">Account #{user?.account_id || '--'}</p>
+              <p className="truncate text-sm font-semibold text-slate-900 leading-none">
+                {user?.full_name || 'Guest User'}
+              </p>
+              <p className="truncate text-xs text-slate-400 mt-1">Account #{user?.account_id || '--'}</p>
             </div>
           </div>
-          <div className="mt-3 rounded-lg bg-white px-3 py-2">
-            <p className="text-xs font-medium text-slate-500">Balance</p>
+          <div className="mt-2.5 rounded-lg bg-white border border-slate-200 px-3 py-2">
+            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Balance</p>
             <p className="mt-0.5 text-sm font-bold text-slate-900">{formatVnd(user?.balance || 0)}</p>
           </div>
         </div>
-
         <button
           type="button"
-          onClick={() => {
-            clearAuth();
-            navigate('/login');
-          }}
-          className="flex w-full items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-600 hover:-translate-y-0.5 transition-all duration-200 ease-out"
+          onClick={() => { clearAuth(); navigate('/login'); }}
+          className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-all duration-150 group"
         >
-          <LogOut className="w-5 h-5 text-slate-400 group-hover:text-rose-500 transition-colors" />
+          <LogOut className="w-[18px] h-[18px] text-slate-400 group-hover:text-rose-500 transition-colors" />
           Sign Out
         </button>
       </div>
     </aside>
   );
 };
+ 

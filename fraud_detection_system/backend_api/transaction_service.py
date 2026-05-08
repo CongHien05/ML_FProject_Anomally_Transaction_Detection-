@@ -517,6 +517,77 @@ def get_admin_alerts(db: Session) -> list[dict]:
     return result
 
 
+def _serialize_admin_account(account: Account) -> dict:
+    user = account.user
+    return {
+        "id": account.id,
+        "user_id": user.id,
+        "username": user.username,
+        "full_name": user.full_name,
+        "user_status": user.status,
+        "balance": float(account.balance),
+        "currency": account.currency,
+        "status": account.status,
+    }
+
+
+def list_admin_accounts(db: Session) -> list[dict]:
+    rows = (
+        db.query(Account)
+        .join(User, Account.user_id == User.id)
+        .order_by(User.username, Account.id)
+        .all()
+    )
+    return [_serialize_admin_account(account) for account in rows]
+
+
+def update_admin_account_status(db: Session, account_id: int, status: str, admin: User) -> dict:
+    if status not in {"ACTIVE", "FROZEN"}:
+        raise HTTPException(status_code=400, detail="Unsupported account status")
+
+    account = _get_account_for_update(db, account_id)
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+    if account.user_id == admin.id and status == "FROZEN":
+        raise HTTPException(status_code=400, detail="Admin cannot freeze their own account")
+
+    account.status = status
+    db.commit()
+    db.refresh(account)
+    return _serialize_admin_account(account)
+
+
+def update_admin_user_status(db: Session, user_id: int, status: str, admin: User) -> dict:
+    if status not in {"ACTIVE", "BANNED"}:
+        raise HTTPException(status_code=400, detail="Unsupported user status")
+
+    user = (
+        db.query(User)
+        .filter(User.id == user_id)
+        .with_for_update()
+        .one_or_none()
+    )
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.id == admin.id and status != "ACTIVE":
+        raise HTTPException(status_code=400, detail="Admin cannot ban their own user")
+
+    account = (
+        db.query(Account)
+        .filter(Account.user_id == user.id)
+        .order_by(Account.id)
+        .with_for_update()
+        .first()
+    )
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    user.status = status
+    db.commit()
+    db.refresh(account)
+    return _serialize_admin_account(account)
+
+
 def list_admin_transactions(db: Session, limit: int = 200) -> list[dict]:
     rows = (
         db.query(Transaction)

@@ -230,6 +230,46 @@ export const getAdminDashboard = async () => {
   return response.json();
 };
 
+export const getAdminAccounts = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/v1/admin/accounts`, {
+    headers: authHeaders(),
+  });
+
+  if (!response.ok) {
+    throw await readError(response, 'Load accounts failed');
+  }
+
+  return response.json();
+};
+
+export const updateAdminAccountStatus = async ({ accountId, status }) => {
+  const response = await fetch(`${API_BASE_URL}/api/v1/admin/accounts/${accountId}/status`, {
+    method: 'PATCH',
+    headers: authHeaders(true),
+    body: JSON.stringify({ status }),
+  });
+
+  if (!response.ok) {
+    throw await readError(response, 'Update account status failed');
+  }
+
+  return response.json();
+};
+
+export const updateAdminUserStatus = async ({ userId, status }) => {
+  const response = await fetch(`${API_BASE_URL}/api/v1/admin/users/${userId}/status`, {
+    method: 'PATCH',
+    headers: authHeaders(true),
+    body: JSON.stringify({ status }),
+  });
+
+  if (!response.ok) {
+    throw await readError(response, 'Update user status failed');
+  }
+
+  return response.json();
+};
+
 export const getAllTransactions = async () => {
   const response = await fetch(`${API_BASE_URL}/api/v1/admin/transactions`, {
     headers: authHeaders(),

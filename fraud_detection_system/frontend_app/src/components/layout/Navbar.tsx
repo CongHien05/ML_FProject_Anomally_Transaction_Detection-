@@ -1,8 +1,23 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Bell, UserCircle, Menu, Clock, ShieldAlert, ArrowRight, Activity } from 'lucide-react';
+import {
+  Bell,
+  UserCircle,
+  Menu,
+  Clock,
+  ShieldAlert,
+  ArrowRight,
+  Activity,
+  LayoutDashboard,
+  Send,
+  Wallet,
+  History,
+  LogOut,
+  UsersRound,
+  List,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getAdminAlerts, getCurrentUser, getMyTransactions } from '../../services/api';
-import { formatVnd, getStoredUser, saveUser } from '../../services/auth';
+import { clearAuth, formatVnd, getStoredUser, saveUser } from '../../services/auth';
 
 const formatTime = (value) =>
   new Intl.DateTimeFormat('vi-VN', {
@@ -17,6 +32,7 @@ export const Navbar = () => {
   const [user, setUser] = useState(() => getStoredUser());
   const [notifications, setNotifications] = useState([]);
   const [isBellOpen, setIsBellOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
 
   const loadNotifications = async (activeUser = user, silent = false) => {
@@ -101,6 +117,24 @@ export const Navbar = () => {
     [notifications]
   );
 
+  const mobileNavItems = useMemo(() => {
+    if (user?.role === 'ADMIN') {
+      return [
+        { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+        { label: 'Fraud Alerts', href: '/admin/alerts', icon: ShieldAlert },
+        { label: 'All Transactions', href: '/admin/transactions', icon: List },
+        { label: 'Accounts', href: '/admin/accounts', icon: UsersRound },
+      ];
+    }
+
+    return [
+      { label: 'Dashboard', href: '/user/dashboard', icon: LayoutDashboard },
+      { label: 'Transfer Money', href: '/user/transfer', icon: Send },
+      { label: 'Cash Out', href: '/user/cashout', icon: Wallet },
+      { label: 'Transaction History', href: '/user/history', icon: History },
+    ];
+  }, [user?.role]);
+
   const handleNotificationClick = (href) => {
     setIsBellOpen(false);
     navigate(href);
@@ -109,9 +143,60 @@ export const Navbar = () => {
   return (
     <header className="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 sticky top-0 z-10 shadow-sm transition-all duration-200 ease-out">
       <div className="flex items-center gap-4">
-        <button className="lg:hidden text-slate-500 hover:text-slate-900 transition-colors">
-          <Menu className="w-6 h-6" />
-        </button>
+        <div className="relative lg:hidden">
+          <button
+            type="button"
+            onClick={() => setIsMenuOpen((value) => !value)}
+            className="text-slate-500 hover:text-slate-900 transition-colors"
+            aria-label="Open navigation"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+
+          {isMenuOpen && (
+            <div className="absolute left-0 top-full z-20 mt-3 w-[calc(100vw-2rem)] max-w-xs overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+              <div className="border-b border-slate-100 px-4 py-3">
+                <p className="text-sm font-bold text-slate-900">{user?.full_name || 'Guest User'}</p>
+                <p className="text-xs text-slate-500">
+                  @{user?.username || 'guest'} - {user?.role || 'USER'}
+                </p>
+              </div>
+              <div className="py-2">
+                {mobileNavItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.href}
+                      type="button"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        navigate(item.href);
+                      }}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+                    >
+                      <Icon className="h-4 w-4 text-slate-400" />
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="border-t border-slate-100 p-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    clearAuth();
+                    navigate('/login');
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
             <span className="text-white font-bold text-lg leading-none tracking-tight">F</span>
