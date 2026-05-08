@@ -222,13 +222,13 @@ class ChatResponse(BaseModel):
     answer: str
     answer_status: str
     scope: str = "current_user_transactions"
+    chat_intent: Optional[str] = None
+    chat_intent_confidence: Optional[float] = None
+    chat_intent_source: Optional[str] = None
     rag_document_id: Optional[str] = None
     rag_generated_at: Optional[str] = None
     rag_file_name: Optional[str] = None
     rag_write_status: Optional[str] = None
-    llm_provider: Optional[str] = None
-    llm_status: Optional[str] = None
-    llm_model: Optional[str] = None
     sources: list[ChatSource] = Field(default_factory=list)
 
 

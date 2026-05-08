@@ -7,12 +7,10 @@ from decimal import Decimal
 from pathlib import Path
 import re
 import unicodedata
-import urllib.error
-import urllib.request
-
 from sqlalchemy import desc, or_
 from sqlalchemy.orm import Session
 
+from chat_ml_service import predict_chat_intent, semantic_similarity_scores
 from models import Account, ChatMessage, Transaction, User
 from transaction_service import _serialize_transaction
 
@@ -24,15 +22,18 @@ _IN_SCOPE_KEYWORDS = {
     "canh bao",
     "cash in",
     "cash out",
+    "chuyen khoan",
     "completed",
     "fraud",
     "giao dich",
     "lich su",
     "nhan",
     "otp",
+    "nap tien",
     "payment",
     "pending",
     "risk",
+    "rut tien",
     "so du",
     "tai khoan",
     "thanh toan",
@@ -69,10 +70,10 @@ _GREETING_PATTERNS = {
 }
 
 _TYPE_KEYWORDS = {
-    "TRANSFER": ("transfer", "chuyen"),
-    "CASH_IN": ("cash in", "nap", "nop tien", "nhan tien vao"),
-    "CASH_OUT": ("cash out", "rut", "rut tien"),
-    "PAYMENT": ("payment", "thanh toan"),
+    "TRANSFER": ("transfer", "chuyen", "chuyen khoan"),
+    "CASH_IN": ("cash in", "nap", "nap tien", "nop tien", "nhan tien vao"),
+    "CASH_OUT": ("cash out", "rut", "rut tien", "lay tien ra"),
+    "PAYMENT": ("payment", "thanh toan", "hoa don"),
 }
 
 _OUT_OF_SCOPE_ANSWER = (
@@ -240,6 +241,46 @@ def _wants_risk(question: str) -> bool:
 def _wants_recent_history(question: str) -> bool:
     normalized = _normalized_no_accents(question)
     return any(token in normalized for token in ("gan nhat", "moi nhat", "recent", "lich su giao dich", "5 giao dich"))
+
+
+def _intent_to_query_status(intent: str) -> str | None:
+    return {
+        "pending": "PENDING",
+        "blocked": "BLOCKED",
+    }.get(intent)
+
+
+def _intent_to_query_direction(intent: str) -> str | None:
+    return {
+        "incoming": "incoming",
+        "outgoing": "outgoing",
+    }.get(intent)
+
+
+def _intent_to_query_type(intent: str) -> str | None:
+    return {
+        "transfer": "TRANSFER",
+        "cash_in": "CASH_IN",
+        "cash_out": "CASH_OUT",
+        "payment": "PAYMENT",
+    }.get(intent)
+
+
+def _transaction_search_text(tx: dict, account_ids: set[int]) -> str:
+    parts = [
+        _tx_line(tx, account_ids),
+        tx.get("request_id"),
+        tx.get("note"),
+        tx.get("type"),
+        tx.get("status"),
+        tx.get("risk_level"),
+        tx.get("review_status"),
+        tx.get("from_username"),
+        tx.get("to_username"),
+        tx.get("from_full_name"),
+        tx.get("to_full_name"),
+    ]
+    return " ".join(str(item) for item in parts if item)
 
 
 def _friendly_greeting_answer() -> str:
@@ -481,12 +522,16 @@ def _score_transaction(
     question: str,
     account_ids: set[int],
     preferred_tx_ids: set[int],
+    semantic_score: float = 0.0,
 ) -> float:
     normalized = _normalized_no_accents(question)
     question_tokens = set(re.findall(r"\w+", normalized))
     tx_line = _normalized_no_accents(_tx_line(tx, account_ids))
     tx_tokens = set(re.findall(r"\w+", tx_line))
     score = float(len(question_tokens.intersection(tx_tokens)))
+
+    if semantic_score > 0:
+        score += semantic_score * 24
 
     if tx.get("id") in preferred_tx_ids:
         score += 40
@@ -528,15 +573,17 @@ def _select_relevant_transactions(
     question: str,
     account_ids: set[int],
     preferred_tx_ids: set[int],
+    chat_intent: str | None = None,
     limit: int = 5,
 ) -> list[dict]:
-    query_direction = _direction_for_query(question)
-    query_status = _status_filter_for_query(question)
-    query_type = _type_filter_for_query(question)
+    normalized_intent = _normalized_no_accents(chat_intent or "")
+    query_direction = _intent_to_query_direction(normalized_intent) or _direction_for_query(question)
+    query_status = _intent_to_query_status(normalized_intent) or _status_filter_for_query(question)
+    query_type = _intent_to_query_type(normalized_intent) or _type_filter_for_query(question)
     query_time = _time_filter_name(question)
     tx_id_filters = set(_extract_transaction_ids(question))
     amount_filters = _parse_amount_tokens(question)
-    wants_recent = _wants_recent_history(question)
+    wants_recent = _wants_recent_history(question) or normalized_intent == "recent_history"
 
     if wants_recent and not any([query_direction, query_status, query_type, query_time, tx_id_filters]):
         recent_rows = []
@@ -563,14 +610,78 @@ def _select_relevant_transactions(
         filtered.append(tx)
 
     candidates = filtered or transactions
+    semantic_scores = semantic_similarity_scores(
+        question,
+        [_transaction_search_text(tx, account_ids) for tx in candidates],
+    )
     scored = []
-    for tx in candidates:
-        score = _score_transaction(tx, question, account_ids, preferred_tx_ids)
+    for tx, semantic_score in zip(candidates, semantic_scores or [0.0] * len(candidates)):
+        score = _score_transaction(tx, question, account_ids, preferred_tx_ids, semantic_score=semantic_score)
         if score > 0 or tx.get("id") in preferred_tx_ids:
             scored.append((score, tx))
 
     if not scored:
-        scored = [(_score_transaction(tx, question, account_ids, preferred_tx_ids), tx) for tx in transactions[:limit]]
+        scored = [
+            (_score_transaction(tx, question, account_ids, preferred_tx_ids), tx)
+            for tx in transactions[:limit]
+        ]
+
+    scored.sort(key=lambda item: (item[0], item[1].get("created_at") or ""), reverse=True)
+    result = []
+    for score, tx in scored[:limit]:
+        result.append({**tx, "_chat_score": round(score, 2)})
+    return result
+
+
+def _select_risky_transactions(
+    transactions: list[dict],
+    question: str,
+    account_ids: set[int],
+    preferred_tx_ids: set[int],
+    limit: int = 5,
+    status_filter: str | None = None,
+) -> list[dict]:
+    if status_filter == "PENDING":
+        pool = [tx for tx in transactions if tx.get("status") == "PENDING"]
+    elif status_filter == "BLOCKED":
+        pool = [tx for tx in transactions if tx.get("status") == "BLOCKED"]
+    else:
+        pool = [
+            tx
+            for tx in transactions
+            if tx.get("status") in {"PENDING", "BLOCKED"}
+            or str(tx.get("risk_level") or "").upper() in {"HIGH", "CRITICAL"}
+        ]
+
+    if not pool:
+        if _extract_transaction_ids(question) or _parse_amount_tokens(question):
+            return _select_relevant_transactions(
+                transactions=transactions,
+                question=question,
+                account_ids=account_ids,
+                preferred_tx_ids=preferred_tx_ids,
+                limit=limit,
+            )
+        return []
+
+    semantic_scores = semantic_similarity_scores(
+        question,
+        [_transaction_search_text(tx, account_ids) for tx in pool],
+    )
+    scored = []
+    for tx, semantic_score in zip(pool, semantic_scores or [0.0] * len(pool)):
+        score = float(semantic_score * 30)
+        if tx.get("status") in {"PENDING", "BLOCKED"}:
+            score += 15
+        if str(tx.get("risk_level") or "").upper() in {"HIGH", "CRITICAL"}:
+            score += 20
+        score += float(tx.get("risk_score") or 0) / 5.0
+        if tx.get("id") in preferred_tx_ids:
+            score += 40
+        for tx_id in _extract_transaction_ids(question):
+            if tx_id == tx.get("id"):
+                score += 60
+        scored.append((score, tx))
 
     scored.sort(key=lambda item: (item[0], item[1].get("created_at") or ""), reverse=True)
     result = []
@@ -795,97 +906,6 @@ def _read_env_value(name: str, default: str = "") -> str:
     return default
 
 
-def _groq_api_key() -> str:
-    return _read_env_value("GROQ_API_KEY")
-
-
-def _groq_model() -> str:
-    return _read_env_value("GROQ_MODEL", "llama-3.1-8b-instant")
-
-
-def _groq_base_url() -> str:
-    return _read_env_value("GROQ_BASE_URL", "https://api.groq.com/openai/v1").rstrip("/")
-
-
-def _groq_timeout_seconds() -> int:
-    try:
-        timeout = int(_read_env_value("GROQ_TIMEOUT_SECONDS", "30"))
-    except ValueError:
-        timeout = 30
-    return max(timeout, 5)
-
-
-def _ollama_base_url() -> str:
-    return _read_env_value(
-        "OLLAMA_BASE_URL",
-        _read_env_value("OPENAI_BASE_URL", "http://127.0.0.1:11434/v1"),
-    ).rstrip("/")
-
-
-def _ollama_model() -> str:
-    return _read_env_value("OLLAMA_MODEL", _read_env_value("CHAT_MODEL", "llama3.2:latest"))
-
-
-def _ollama_model_candidates() -> list[str]:
-    primary_model = _ollama_model()
-    raw_fallbacks = _read_env_value("OLLAMA_FALLBACK_MODELS", "llama3.2:1b")
-    candidates = [primary_model]
-    if ":" not in primary_model:
-        candidates.append(f"{primary_model}:latest")
-    candidates.extend(item.strip() for item in raw_fallbacks.split(",") if item.strip())
-
-    unique_candidates: list[str] = []
-    for model in candidates:
-        if model and model not in unique_candidates:
-            unique_candidates.append(model)
-    return unique_candidates
-
-
-def _ollama_api_key() -> str:
-    return _read_env_value("OLLAMA_API_KEY", _read_env_value("OPENAI_API_KEY", ""))
-
-
-def _ollama_timeout_seconds() -> int:
-    try:
-        timeout = int(
-            _read_env_value(
-                "OLLAMA_TIMEOUT_SECONDS",
-                _read_env_value(
-                    "CHAT_COMPLETION_TIMEOUT_SEC",
-                    _read_env_value("CHAT_COMPLETION_TIMEOUT_SECONDS", "60"),
-                ),
-            )
-        )
-    except ValueError:
-        timeout = 60
-    return max(timeout, 5)
-
-
-def _chat_llm_max_tokens() -> int:
-    try:
-        max_tokens = int(_read_env_value("CHAT_MAX_TOKENS", "120"))
-    except ValueError:
-        max_tokens = 120
-    return max(max_tokens, 32)
-
-
-def _chat_llm_rewrite_factual() -> bool:
-    return _read_env_value("CHAT_LLM_REWRITE_FACTUAL", "false").strip().lower() == "true"
-
-
-def _chat_llm_provider_order() -> list[str]:
-    provider = _read_env_value("CHAT_LLM_PROVIDER", "auto").strip().lower()
-    if provider in {"off", "none", "disabled"}:
-        return []
-    if provider in {"ollama", "local"}:
-        return ["ollama"]
-    if provider == "groq":
-        return ["groq"]
-    if _groq_api_key():
-        return ["groq"]
-    return ["ollama"]
-
-
 def _history_limit_for_query(question: str) -> int:
     normalized = _normalized_no_accents(question)
     if any(
@@ -917,280 +937,6 @@ def _format_profile_context(profile: dict) -> dict:
         "blocked_count": profile.get("blocked_count", 0),
         "completed_count": profile.get("completed_count", 0),
         "last_transaction_at": _format_dt(profile.get("last_transaction_at")),
-    }
-
-
-def _format_history_context(stored_history: list[ChatMessage], limit: int = 6) -> list[dict]:
-    history_rows: list[dict] = []
-    for item in stored_history[-limit:]:
-        content = (item.content or "").strip()
-        if not content:
-            continue
-        history_rows.append(
-            {
-                "role": item.role,
-                "content": content[:500],
-            }
-        )
-    return history_rows
-
-
-def _build_prompt_payload(
-    user: User,
-    question: str,
-    effective_question: str,
-    fallback_answer: str,
-    answer_status: str,
-    rag_document: dict,
-    relevant_transactions: list[dict],
-    sources: list[dict],
-    account_ids: set[int],
-    stored_history: list[ChatMessage],
-) -> str:
-    profile = rag_document.get("profile_snapshot") or {}
-    payload = {
-        "scope": "chi duoc tra loi bang du lieu cua user hien tai",
-        "rag_snapshot": {
-            "document_id": rag_document.get("document_id"),
-            "generated_at": rag_document.get("generated_at"),
-            "file_name": rag_document.get("file_name"),
-            "write_status": rag_document.get("write_status"),
-            "account_count": rag_document.get("account_count", 0),
-            "transaction_count": rag_document.get("transaction_count", 0),
-            "included_transaction_count": rag_document.get("included_transaction_count", 0),
-        },
-        "customer": {
-            "user_id": user.id,
-            "username": user.username,
-            "full_name": user.full_name,
-        },
-        "question": question.strip(),
-        "effective_question": effective_question.strip(),
-        "answer_status": answer_status,
-        "profile_summary": rag_document.get("profile_summary") or _format_profile_context(profile),
-        "retrieved_transactions": [
-            {
-                "transaction_id": tx.get("id"),
-                "request_id": tx.get("request_id"),
-                "summary": _tx_line(tx, account_ids),
-                "amount": _format_money(tx.get("amount")),
-                "type": tx.get("type"),
-                "status": tx.get("status"),
-                "risk_level": tx.get("risk_level"),
-                "risk_score": tx.get("risk_score"),
-                "note": tx.get("note"),
-                "created_at": _format_dt(tx.get("created_at")),
-            }
-            for tx in relevant_transactions
-        ],
-        "sources": sources,
-        "recent_chat_history": _format_history_context(stored_history),
-        "fallback_answer": fallback_answer,
-    }
-    return json.dumps(payload, ensure_ascii=False, indent=2)
-
-
-def _call_openai_compatible_chat_completion(
-    *,
-    base_url: str,
-    model: str,
-    messages: list[dict],
-    timeout_seconds: int,
-    api_key: str = "",
-    max_tokens: int | None = None,
-) -> str:
-    headers = {"Content-Type": "application/json"}
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
-    payload = json.dumps(
-        {
-            "model": model,
-            "messages": messages,
-            "temperature": 0.2,
-            "max_tokens": max_tokens or _chat_llm_max_tokens(),
-            "stream": False,
-        }
-    ).encode("utf-8")
-
-    request = urllib.request.Request(
-        url=f"{base_url.rstrip('/')}/chat/completions",
-        data=payload,
-        headers=headers,
-        method="POST",
-    )
-
-    try:
-        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
-            body = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="ignore")
-        raise RuntimeError(f"LLM HTTP {exc.code}: {detail}") from exc
-    except urllib.error.URLError as exc:
-        raise RuntimeError(f"Khong ket noi duoc LLM: {exc.reason}") from exc
-
-    choices = body.get("choices") or []
-    if not choices:
-        raise RuntimeError("LLM khong tra ve choices.")
-
-    message = choices[0].get("message") or {}
-    content = (message.get("content") or "").strip()
-    if not content:
-        raise RuntimeError("LLM tra ve noi dung rong.")
-
-    return content
-
-
-def _call_groq_chat_completion(messages: list[dict]) -> str:
-    api_key = _groq_api_key()
-    if not api_key:
-        raise RuntimeError("Groq API key chua duoc cau hinh.")
-    return _call_openai_compatible_chat_completion(
-        base_url=_groq_base_url(),
-        model=_groq_model(),
-        messages=messages,
-        timeout_seconds=_groq_timeout_seconds(),
-        api_key=api_key,
-        max_tokens=_chat_llm_max_tokens(),
-    )
-
-
-def _call_ollama_chat_completion(messages: list[dict]) -> str:
-    last_error: Exception | None = None
-    for model in _ollama_model_candidates():
-        try:
-            return _call_openai_compatible_chat_completion(
-                base_url=_ollama_base_url(),
-                model=model,
-                messages=messages,
-                timeout_seconds=_ollama_timeout_seconds(),
-                api_key=_ollama_api_key(),
-                max_tokens=_chat_llm_max_tokens(),
-            )
-        except Exception as exc:
-            last_error = exc
-            continue
-    if last_error is not None:
-        raise last_error
-    raise RuntimeError("Chua cau hinh Ollama model.")
-
-
-def _call_chat_llm(provider: str, messages: list[dict]) -> str:
-    if provider == "ollama":
-        return _call_ollama_chat_completion(messages)
-    if provider == "groq":
-        return _call_groq_chat_completion(messages)
-    raise RuntimeError(f"Provider LLM khong ho tro: {provider}")
-
-
-def _maybe_generate_llm_answer(
-    user: User,
-    question: str,
-    effective_question: str,
-    fallback_answer: str,
-    answer_status: str,
-    rag_document: dict,
-    relevant_transactions: list[dict],
-    sources: list[dict],
-    account_ids: set[int],
-    stored_history: list[ChatMessage],
-) -> tuple[str | None, dict]:
-    light_statuses = {"greeting", "needs_clarification", "out_of_scope", "no_account", "no_match"}
-    if answer_status not in light_statuses and not _chat_llm_rewrite_factual():
-        return None, {"llm_status": "skipped_factual_rewrite_disabled"}
-
-    profile = rag_document.get("profile_snapshot") or {}
-    if answer_status not in light_statuses and not relevant_transactions and not profile.get("balances"):
-        return None, {"llm_status": "skipped_no_context"}
-
-    provider_order = _chat_llm_provider_order()
-    if not provider_order:
-        return None, {"llm_status": "disabled"}
-
-    system_prompt = (
-        "Ban chi lam nhiem vu viet lai cau tra loi cho tro ly giao dich noi bo. "
-        "Tra loi bang tieng Viet khong dau, than thien, ngan gon. "
-        "Draft answer da duoc backend tao tu RAG cua user hien tai. "
-        "Khong them su kien moi, khong doi so tien, ma giao dich, thoi gian, trang thai, risk score hay so du. "
-        "Neu draft la loi chao, hay chao tu nhien. "
-        "Neu draft la loi tu choi ngoai pham vi, hay tu choi lich su va ngan gon."
-    )
-
-    status_instruction = {
-        "greeting": "Viet dung 1 cau chao ngan, khong liet ke, khong nhac so lieu hay noi chua co thong tin.",
-        "needs_clarification": "Hoi lai 1 cau ngan de user noi ro hon.",
-        "out_of_scope": "Tu choi 1-2 cau ngan, lich su.",
-        "no_account": "Noi ngan gon rang user chua co tai khoan trong he thong.",
-        "no_match": "Noi ngan gon rang khong tim thay giao dich phu hop.",
-    }.get(answer_status, "Viet lai ngan gon, giu dung so lieu.")
-
-    user_prompt = (
-        f"Cau hoi cua user: {question.strip()}\n"
-        f"Answer status: {answer_status}\n"
-        f"Yeu cau rieng: {status_instruction}\n"
-        "Draft answer can viet lai, giu nguyen y nghia va so lieu:\n"
-        f"{fallback_answer[:3000]}"
-    )
-
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_prompt},
-    ]
-
-    last_error: str | None = None
-    for provider in provider_order:
-        try:
-            answer = _call_chat_llm(provider, messages)
-        except Exception as exc:
-            last_error = str(exc)
-            continue
-
-        normalized = _normalized_no_accents(answer)
-        if not normalized:
-            last_error = "empty_answer"
-            continue
-        if "nguoi khac" in normalized and "chinh ban" not in normalized:
-            last_error = "unsafe_other_user_answer"
-            continue
-        if answer_status == "greeting" and (
-            "\n" in answer
-            or len(answer) > 220
-            or any(
-                phrase in normalized
-                for phrase in (
-                    "khong co thong tin",
-                    "can biet",
-                    "ma giao dich",
-                    "so du:",
-                    "lich su giao dich:",
-                )
-            )
-        ):
-            last_error = "low_quality_greeting"
-            continue
-        if answer_status != "out_of_scope" and any(
-            phrase in normalized
-            for phrase in (
-                "toi khong the cung cap",
-                "toi khong the giup",
-                "toi xin loi",
-                "chinh sach",
-                "luat phap",
-                "buoc 1",
-                "json",
-            )
-        ):
-            last_error = "low_quality_or_refusal"
-            continue
-        return answer.strip(), {
-            "llm_status": "ok",
-            "llm_provider": provider,
-            "llm_model": _ollama_model() if provider == "ollama" else _groq_model(),
-        }
-
-    return None, {
-        "llm_status": "failed",
-        "llm_provider": ",".join(provider_order),
-        "llm_error": (last_error or "unknown")[:240],
     }
 
 
@@ -1233,36 +979,53 @@ def answer_transaction_chat(
         if item.get("account_id") is not None
     ]
     account_id_set = set(account_ids)
+    intent_prediction = predict_chat_intent(effective_question, min_confidence=0.30)
+    chat_intent = intent_prediction.label
+    chat_intent_confidence = round(intent_prediction.confidence, 4)
+    chat_intent_source = intent_prediction.source
     relevant_transactions: list[dict] = []
 
-    if not account_ids:
-        answer = _friendly_no_account_answer()
-        sources: list[dict] = []
-        status = "no_account"
-    elif _is_greeting_question(question):
+    if chat_intent == "greeting" or _is_greeting_question(question):
         answer = _friendly_greeting_answer()
-        sources = []
+        sources: list[dict] = []
         status = "greeting"
-    elif _is_vague_question(effective_question):
+    elif chat_intent == "needs_clarification" or _is_vague_question(effective_question):
         answer = _friendly_clarify_answer()
         sources = []
         status = "needs_clarification"
-    elif not _is_in_scope(effective_question):
+    elif chat_intent == "out_of_scope" or not _is_in_scope(effective_question):
         answer = _friendly_out_of_scope_answer()
         sources = []
         status = "out_of_scope"
+    elif not account_ids:
+        answer = _friendly_no_account_answer()
+        sources = []
+        status = "no_account"
     else:
-        relevant_transactions = _select_relevant_transactions(
-            transactions=transactions,
-            question=effective_question,
-            account_ids=account_id_set,
-            preferred_tx_ids=preferred_tx_ids,
-            limit=_history_limit_for_query(effective_question),
-        )
+        if chat_intent in {"risk", "pending", "blocked"}:
+            status_filter = _intent_to_query_status(chat_intent)
+            relevant_transactions = _select_risky_transactions(
+                transactions=transactions,
+                question=effective_question,
+                account_ids=account_id_set,
+                preferred_tx_ids=preferred_tx_ids,
+                limit=_history_limit_for_query(effective_question),
+                status_filter=status_filter,
+            )
+        else:
+            relevant_transactions = _select_relevant_transactions(
+                transactions=transactions,
+                question=effective_question,
+                account_ids=account_id_set,
+                preferred_tx_ids=preferred_tx_ids,
+                chat_intent=chat_intent,
+                limit=_history_limit_for_query(effective_question),
+            )
+
         sources = _build_sources(relevant_transactions, account_id_set)
         display_limit = max(1, len(relevant_transactions))
 
-        if _wants_balance(effective_question):
+        if chat_intent == "balance" or _wants_balance(effective_question):
             answer = (
                 f"Thong tin tai khoan cua chinh ban: @{profile['username']} - {profile['full_name']}. "
                 f"Trang thai user: {str(profile['status']).lower()}. "
@@ -1271,7 +1034,7 @@ def answer_transaction_chat(
                 + _friendly_balance_answer(profile)
             )
             status = "balance"
-        elif _wants_full_info(effective_question):
+        elif chat_intent == "full_info" or _wants_full_info(effective_question):
             latest_lines = [_tx_line(tx, account_id_set) for tx in (relevant_transactions or transactions[:5])]
             phone_text = profile["phone_number"] or "chua cap nhat"
             answer = (
@@ -1291,7 +1054,7 @@ def answer_transaction_chat(
             if latest_lines:
                 answer += "\nCac giao dich khop/gan nhat cua ban:\n" + "\n".join(f"- {line}" for line in latest_lines[:display_limit])
             status = "full_info"
-        elif _wants_total(effective_question):
+        elif chat_intent == "total" or _wants_total(effective_question):
             total_amount = sum(float(tx.get("amount") or 0) for tx in relevant_transactions)
             answer = (
                 f"Trong {len(relevant_transactions)} giao dich khop nhat cua chinh ban, tong gia tri la "
@@ -1300,13 +1063,8 @@ def answer_transaction_chat(
             if relevant_transactions:
                 answer += "\nChi tiet:\n" + "\n".join(f"- {_tx_line(tx, account_id_set)}" for tx in relevant_transactions[:display_limit])
             status = "total"
-        elif _wants_risk(effective_question):
-            risky = [
-                tx
-                for tx in relevant_transactions
-                if tx.get("status") in {"PENDING", "BLOCKED"} or str(tx.get("risk_level") or "").upper() in {"HIGH", "CRITICAL"}
-            ]
-            selected = risky or relevant_transactions
+        elif chat_intent in {"risk", "pending", "blocked"} or _wants_risk(effective_question):
+            selected = relevant_transactions
             if not selected:
                 answer = "Toi chua thay giao dich canh bao/pending/block nao cua chinh ban trong du lieu hien tai."
                 status = "risk_none"
@@ -1333,23 +1091,6 @@ def answer_transaction_chat(
                 answer = _friendly_history_answer(relevant_transactions, account_id_set, display_limit)
                 status = "history"
 
-    llm_answer, llm_meta = _maybe_generate_llm_answer(
-        user=user,
-        question=question,
-        effective_question=effective_question,
-        fallback_answer=answer,
-        answer_status=status,
-        rag_document=rag_document,
-        relevant_transactions=relevant_transactions,
-        sources=sources,
-        account_ids=account_id_set,
-        stored_history=stored_history,
-    )
-    if llm_answer:
-        answer = llm_answer
-    elif llm_meta.get("llm_status") == "failed":
-        llm_meta["llm_status"] = "fallback"
-
     _save_chat_message(
         db,
         user_id=user.id,
@@ -1357,12 +1098,11 @@ def answer_transaction_chat(
         content=answer,
         context={
             "answer_status": status,
+            "chat_intent": chat_intent,
+            "chat_intent_confidence": chat_intent_confidence,
+            "chat_intent_source": chat_intent_source,
             "rag_document_id": rag_document.get("document_id"),
             "rag_generated_at": rag_document.get("generated_at"),
-            "llm_provider": llm_meta.get("llm_provider"),
-            "llm_status": llm_meta.get("llm_status"),
-            "llm_model": llm_meta.get("llm_model"),
-            "llm_error": llm_meta.get("llm_error"),
             "transaction_ids": [item.get("transaction_id") for item in sources if item.get("transaction_id") is not None],
         },
     )
@@ -1372,12 +1112,12 @@ def answer_transaction_chat(
         "answer": answer,
         "answer_status": status,
         "scope": "current_user_transactions",
+        "chat_intent": chat_intent,
+        "chat_intent_confidence": chat_intent_confidence,
+        "chat_intent_source": chat_intent_source,
         "rag_document_id": rag_document.get("document_id"),
         "rag_generated_at": rag_document.get("generated_at"),
         "rag_file_name": rag_snapshot.get("file_name"),
         "rag_write_status": rag_snapshot.get("write_status"),
-        "llm_provider": llm_meta.get("llm_provider"),
-        "llm_status": llm_meta.get("llm_status"),
-        "llm_model": llm_meta.get("llm_model"),
         "sources": sources,
     }

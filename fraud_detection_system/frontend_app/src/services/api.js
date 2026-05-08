@@ -272,9 +272,9 @@ export const chatWithAssistant = async ({ message, messageHistory = [] }) => {
     const result = await response.json();
     if (import.meta.env.DEV) {
       console.info('[chat assistant]', {
-        llm_provider: result.llm_provider,
-        llm_status: result.llm_status,
-        llm_model: result.llm_model,
+        chat_intent: result.chat_intent,
+        chat_intent_confidence: result.chat_intent_confidence,
+        chat_intent_source: result.chat_intent_source,
       });
     }
     return (
