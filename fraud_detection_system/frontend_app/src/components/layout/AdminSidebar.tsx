@@ -27,17 +27,17 @@ export const AdminSidebar = () => {
   }, []);
 
   const navItems = [
-    { name: 'Overview', path: '/admin/dashboard', icon: LayoutDashboard },
-    { name: 'Fraud Alerts', path: '/admin/alerts', icon: ShieldAlert },
-    { name: 'All Transactions', path: '/admin/transactions', icon: List },
-    { name: 'Accounts', path: '/admin/accounts', icon: UsersRound },
+    { name: 'Tổng quan', path: '/admin/dashboard', icon: LayoutDashboard },
+    { name: 'Cảnh báo gian lận', path: '/admin/alerts', icon: ShieldAlert },
+    { name: 'Tất cả giao dịch', path: '/admin/transactions', icon: List },
+    { name: 'Tài khoản', path: '/admin/accounts', icon: UsersRound },
   ];
 
  return (
     <aside className="w-64 bg-slate-900 border-r border-slate-800 h-[calc(100vh-4rem)] sticky top-16 flex-col shadow-lg hidden lg:flex">
       <div className="flex-1 overflow-y-auto py-5 px-3">
         <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-3 mb-4">
-          Backoffice System
+          Hệ thống quản trị
         </p>
         <nav className="space-y-0.5">
           {navItems.map((item) => {
@@ -86,7 +86,7 @@ export const AdminSidebar = () => {
           className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-rose-500/10 hover:text-rose-400 transition-all duration-150 group"
         >
           <LogOut className="w-[18px] h-[18px] text-slate-500 group-hover:text-rose-400 transition-colors" />
-          Sign Out
+          Đăng xuất
         </button>
       </div>
     </aside>

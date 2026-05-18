@@ -352,14 +352,14 @@ async def search_user(
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
     
+    if account.status != "ACTIVE":
+        raise HTTPException(status_code=400, detail="Recipient account is not available for transfers")
+
     return {
         "user_id": user.id,
         "account_id": account.id,
         "username": user.username,
         "full_name": user.full_name,
-        "balance": float(account.balance),
-        "currency": account.currency,
-        "status": account.status,
     }
 
 

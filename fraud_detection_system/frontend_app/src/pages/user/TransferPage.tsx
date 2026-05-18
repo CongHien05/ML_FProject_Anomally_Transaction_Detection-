@@ -1,4 +1,28 @@
 import React, { useState } from 'react';
+
+interface RecipientInfo {
+  user_id: number;
+  account_id: number;
+  username: string;
+  full_name: string;
+}
+
+interface TransactionDecision {
+  transaction_id: number;
+  status: string;
+  risk_score: number;
+  risk_level: string;
+  explanations: string[];
+}
+
+interface StoredUser {
+  account_id: number;
+  balance: number;
+  phone_number?: string;
+  full_name?: string;
+  username?: string;
+  role?: string;
+}
 import { Send, AlertCircle, Search, ShieldAlert, CheckCircle2, KeyRound, Smartphone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -15,9 +39,9 @@ export const TransferPage = () => {
   const [loading, setLoading] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
   const [error, setError] = useState('');
-  const [recipientInfo, setRecipientInfo] = useState(null);
+  const [recipientInfo, setRecipientInfo] = useState<RecipientInfo | null>(null);
   const [searchingRecipient, setSearchingRecipient] = useState(false);
-  const [decision, setDecision] = useState(null);
+  const [decision, setDecision] = useState<TransactionDecision | null>(null);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [phoneOtpSent, setPhoneOtpSent] = useState(false);
@@ -43,7 +67,7 @@ export const TransferPage = () => {
     );
   }
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -80,15 +104,15 @@ export const TransferPage = () => {
       }
       setRecipientInfo(result);
       setError('');
-    } catch (err) {
-      setError(err.message || 'Recipient not found');
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Không tìm thấy người nhận');
       setRecipientInfo(null);
     } finally {
       setSearchingRecipient(false);
     }
   };
 
-  const handleTransfer = async (e) => {
+  const handleTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.recipient.trim()) {
@@ -135,8 +159,8 @@ export const TransferPage = () => {
         toast.success('Transfer completed.');
         await refreshCurrentUser();
       }
-    } catch (err) {
-      setError(err.message || 'Transfer failed. Please try again.');
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Chuyển tiền thất bại. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -155,8 +179,8 @@ export const TransferPage = () => {
       await requestTransactionOtp(phoneNumber);
       toast('OTP sent to your phone number.', { icon: '📱' });
       setPhoneOtpSent(true);
-    } catch (err) {
-      setError(err.message || 'Failed to send OTP');
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Gửi OTP thất bại');
     } finally {
       setOtpLoading(false);
     }
@@ -189,8 +213,8 @@ export const TransferPage = () => {
       setPhoneNumber('');
       setOtpCode('');
       setPhoneOtpSent(false);
-    } catch (err) {
-      setError(err.message || 'OTP verification failed');
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Xác minh OTP thất bại');
     } finally {
       setOtpLoading(false);
     }
@@ -206,129 +230,152 @@ export const TransferPage = () => {
         <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
           <Send className="w-8 h-8 text-indigo-600" />
         </div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Transfer Money</h1>
-        <p className="text-slate-500 text-sm mt-2">Every transfer is screened before funds move.</p>
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Chuyển Tiền</h1>
+        <p className="text-slate-500 text-sm mt-2">Mỗi giao dịch đều được kiểm tra trước khi thực hiện.</p>
         <p className="text-slate-600 text-xs mt-3">
-          Your balance: <span className="font-semibold text-slate-900">{formatVnd(currentUser.balance || 0)}</span>
+          Số dư: <span className="font-semibold text-slate-900">{formatVnd(currentUser.balance || 0)}</span>
         </p>
       </div>
 
       {decision && (
         <div
-          className={`mb-5 rounded-2xl border p-4 shadow-sm ${
+          className={`mb-5 rounded-2xl border shadow-sm overflow-hidden ${
             isBlocked
-              ? 'border-rose-200 bg-rose-50'
+              ? 'border-rose-200'
               : isPending
-                ? 'border-amber-200 bg-amber-50'
-                : 'border-emerald-200 bg-emerald-50'
+                ? 'border-amber-200'
+                : 'border-emerald-200'
           }`}
         >
-          <div className="flex items-start gap-3">
-            <div
-              className={`mt-0.5 rounded-xl p-2 ${
-                isBlocked
-                  ? 'bg-rose-100 text-rose-700'
-                  : isPending
-                    ? 'bg-amber-100 text-amber-700'
-                    : 'bg-emerald-100 text-emerald-700'
-              }`}
-            >
+          {/* Header */}
+          <div className={`flex items-center gap-3 px-4 py-3 ${
+            isBlocked ? 'bg-rose-50' : isPending ? 'bg-amber-50' : 'bg-emerald-50'
+          }`}>
+            <div className={`rounded-xl p-2 ${
+              isBlocked ? 'bg-rose-100 text-rose-600'
+              : isPending ? 'bg-amber-100 text-amber-600'
+              : 'bg-emerald-100 text-emerald-600'
+            }`}>
               {isBlocked ? <ShieldAlert className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
             </div>
-            <div className="min-w-0">
-              <h3 className="text-sm font-bold text-slate-900">
-                {isBlocked
-                  ? 'Fraud alert: transfer blocked'
-                  : isPending
-                    ? 'Extra verification required'
-                    : 'Transfer completed'}
-              </h3>
-              <p className="mt-1 text-sm text-slate-700">
-                Transaction #{decision.transaction_id} is {decision.status}. Risk: {decision.risk_level} (
-                {Number(decision.risk_score).toFixed(2)}/100).
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm font-bold ${
+                isBlocked ? 'text-rose-800' : isPending ? 'text-amber-800' : 'text-emerald-800'
+              }`}>
+                {isBlocked ? 'Giao dịch bị tạm giữ để xét duyệt'
+                  : isPending ? 'Cần xác minh OTP để hoàn tất'
+                  : 'Chuyển tiền thành công'}
               </p>
-              {isBlocked && (
-                <p className="mt-2 text-sm font-medium text-rose-700">
-                  Funds were not deducted. Admin has been alerted and can approve, reject, freeze the account, or ban the user.
-                </p>
-              )}
-              {isPending && (
-                <p className="mt-2 text-sm font-medium text-amber-700">
-                  Funds were not deducted yet. Complete OTP verification before the transfer can move.
-                </p>
-              )}
-              <ul className="mt-3 space-y-1.5">
-                {decision.explanations?.map((item, index) => (
-                  <li key={index} className="text-xs leading-relaxed text-slate-600">
-                    - {item}
+              <p className="text-xs text-slate-500 mt-0.5">Mã GD #{decision.transaction_id}</p>
+            </div>
+            {/* Risk badge */}
+            <span className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-bold ${
+              decision.risk_level === 'CRITICAL' ? 'bg-red-100 text-red-700'
+              : decision.risk_level === 'HIGH' ? 'bg-orange-100 text-orange-700'
+              : decision.risk_level === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700'
+              : 'bg-green-100 text-green-700'
+            }`}>
+              {decision.risk_level === 'CRITICAL' ? '⚠ Rất cao'
+                : decision.risk_level === 'HIGH' ? '⚠ Cao'
+                : decision.risk_level === 'MEDIUM' ? '⚠ Trung bình'
+                : '✓ Thấp'}
+            </span>
+          </div>
+
+          {/* Status notice */}
+          {isBlocked && (
+            <div className="px-4 py-2.5 bg-rose-100/60 border-t border-rose-200 text-sm text-rose-800">
+              Tiền <strong>chưa bị trừ</strong>. Quản trị viên sẽ xem xét và phản hồi sớm nhất.
+            </div>
+          )}
+          {isPending && (
+            <div className="px-4 py-2.5 bg-amber-100/60 border-t border-amber-200 text-sm text-amber-800">
+              Tiền <strong>chưa bị trừ</strong>. Nhập mã OTP bên dưới để xác nhận giao dịch.
+            </div>
+          )}
+
+          {/* Explanations */}
+          {decision.explanations?.length > 0 && (
+            <div className="px-4 py-3 bg-white border-t border-slate-100">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-2">
+                Lý do hệ thống kiểm tra
+              </p>
+              <ul className="space-y-1.5">
+                {decision.explanations.map((item, index) => (
+                  <li key={index} className="flex items-start gap-2 text-sm text-slate-700">
+                    <span className={`mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 ${
+                      isBlocked ? 'bg-rose-400' : isPending ? 'bg-amber-400' : 'bg-emerald-400'
+                    }`} />
+                    {item}
                   </li>
                 ))}
               </ul>
             </div>
-          </div>
+          )}
+        </div>
+      )}
 
-          {isPending && showPhoneVerification && (
-            <div className="mt-4 space-y-3">
-              {!phoneOtpSent ? (
-                <>
-                  <div className="text-sm font-medium text-slate-700 mb-2">Enter your phone number to receive OTP</div>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Smartphone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                      <input
-                        type="tel"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        className="w-full rounded-xl border border-amber-200 bg-white py-3 pl-9 pr-3 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                        placeholder="Phone number"
-                      />
-                    </div>
-                  </div>
-               <button
+      {isPending && showPhoneVerification && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+          <p className="text-sm font-semibold text-amber-800">Xác minh danh tính qua OTP</p>
+          {!phoneOtpSent ? (
+            <>
+              <div className="text-sm text-amber-700">Nhập số điện thoại để nhận mã OTP</div>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Smartphone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    className="w-full rounded-xl border border-amber-200 bg-white py-3 pl-9 pr-3 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    placeholder="Số điện thoại"
+                  />
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleRequestOtp}
+                disabled={otpLoading}
+                className="w-full rounded-xl bg-amber-600 px-4 py-3 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+              >
+                {otpLoading ? 'Đang gửi...' : 'Gửi mã OTP'}
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="text-sm text-amber-700">
+                Nhập mã OTP đã gửi đến <strong>{phoneNumber}</strong>
+              </div>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.slice(0, 6))}
+                    className="w-full rounded-xl border border-amber-200 bg-white py-3 pl-9 pr-3 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    placeholder="Mã OTP 6 chữ số"
+                    maxLength={6}
+                  />
+                </div>
+                <button
                   type="button"
-                  onClick={handleRequestOtp}
+                  onClick={handleOtpVerify}
                   disabled={otpLoading}
-                  className="w-full rounded-xl bg-amber-600 px-4 py-3 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+                  className="rounded-xl bg-amber-600 px-4 py-3 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
                 >
-                  {otpLoading ? 'Sending...' : 'Send OTP to Phone'}
+                  {otpLoading ? 'Đang xác minh' : 'Xác nhận'}
                 </button>
-                </>
-              ) : (
-                <>
-                  <div className="text-sm font-medium text-slate-700 mb-2">
-                    Enter OTP code sent to {phoneNumber}
-                  </div>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                      <input
-                        type="text"
-                        value={otpCode}
-                        onChange={(e) => setOtpCode(e.target.value.slice(0, 6))}
-                        className="w-full rounded-xl border border-amber-200 bg-white py-3 pl-9 pr-3 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                        placeholder="000000"
-                        maxLength="6"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleOtpVerify}
-                      disabled={otpLoading}
-                      className="rounded-xl bg-amber-600 px-4 py-3 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
-                    >
-                      {otpLoading ? 'Verifying' : 'Verify'}
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setPhoneOtpSent(false)}
-                    className="w-full text-sm text-slate-600 hover:text-slate-700"
-                  >
-                    Change phone number
-                  </button>
-                </>
-              )}
-            </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPhoneOtpSent(false)}
+                className="w-full text-sm text-slate-600 hover:text-slate-700"
+              >
+                Đổi số điện thoại
+              </button>
+            </>
           )}
         </div>
       )}
@@ -345,7 +392,7 @@ export const TransferPage = () => {
           <div className="space-y-4">
             <div>
               <label htmlFor="recipient" className="block text-sm font-medium text-slate-700 mb-1.5">
-                Recipient Username
+                Tên người nhận
               </label>
               <div className="flex gap-2">
                 <input
@@ -355,7 +402,7 @@ export const TransferPage = () => {
                   onChange={handleInputChange}
                   disabled={loading || searchingRecipient}
                   className="flex-1 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none transition-all duration-200 ease-out disabled:opacity-50"
-                  placeholder="username"
+                  placeholder="Tên đăng nhập"
                 />
                 <button
                   type="button"
@@ -371,16 +418,19 @@ export const TransferPage = () => {
                 </button>
               </div>
               {recipientInfo && (
-                <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg text-sm">
-                  <p className="text-green-700 font-medium">{recipientInfo.full_name}</p>
-                  <p className="text-green-600 text-xs">Balance: {formatVnd(recipientInfo.balance)}</p>
+                <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg text-sm flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-green-700 font-medium">{recipientInfo.full_name}</p>
+                    <p className="text-green-600 text-xs">@{recipientInfo.username} · Tài khoản hợp lệ</p>
+                  </div>
                 </div>
               )}
             </div>
 
             <div>
               <label htmlFor="amount" className="block text-sm font-medium text-slate-700 mb-1.5">
-                Amount
+                Số tiền
               </label>
               <input
                 type="text"
@@ -393,7 +443,7 @@ export const TransferPage = () => {
                 placeholder="0"
               />
               <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
-                <span>Transfer amount: {formatVnd(parseVndAmount(formData.amount))}</span>
+                <span>Số tiền chuyển: {formatVnd(parseVndAmount(formData.amount))}</span>
                 <button
                   type="button"
                   onClick={handleUseMaxAmount}
@@ -407,7 +457,7 @@ export const TransferPage = () => {
 
             <div>
               <label htmlFor="note" className="block text-sm font-medium text-slate-700 mb-1.5">
-                Note (Optional)
+                Ghi chú (Tùy chọn)
               </label>
               <input
                 type="text"
@@ -416,7 +466,7 @@ export const TransferPage = () => {
                 onChange={handleInputChange}
                 disabled={loading}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none transition-all duration-200 ease-out disabled:opacity-50"
-                placeholder="What's this for?"
+                placeholder="Nội dung chuyển tiền..."
               />
             </div>
           </div>
@@ -430,12 +480,12 @@ export const TransferPage = () => {
               {loading ? (
                 <>
                   <div className="animate-spin mr-2 w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                  Processing...
+                  Đang xử lý...
                 </>
               ) : (
                 <>
                   <Send className="mr-2 w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                  Send Money
+                  Chuyển Tiền
                 </>
               )}
             </button>

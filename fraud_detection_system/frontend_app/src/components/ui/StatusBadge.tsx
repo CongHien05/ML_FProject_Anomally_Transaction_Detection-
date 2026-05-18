@@ -47,7 +47,19 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
         status
       )}`}
     >
-      {status}
+      {status === 'COMPLETED' ? 'Hoàn tất'
+        : status === 'PENDING' ? 'Chờ xử lý'
+        : status === 'PROCESSING' ? 'Đang xử lý'
+        : status === 'FAILED' ? 'Thất bại'
+        : status === 'BLOCKED' ? 'Bị chặn'
+        : status === 'ACTIVE' ? 'Hoạt động'
+        : status === 'FROZEN' ? 'Đóng băng'
+        : status === 'BANNED' ? 'Bị khóa'
+        : status === 'LOW' ? 'Thấp'
+        : status === 'MEDIUM' ? 'Trung bình'
+        : status === 'HIGH' ? 'Cao'
+        : status === 'CRITICAL' ? 'Rất cao'
+        : status}
     </span>
   );
 };

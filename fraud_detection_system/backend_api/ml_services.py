@@ -12,50 +12,91 @@ class FraudDetectionService:
             cls._instance._load_model()
         return cls._instance
 
-    def _load_model(self):
+    # All transaction types present in the PaySim training data
+    KNOWN_TYPES = ["CASH_IN", "CASH_OUT", "DEBIT", "PAYMENT", "TRANSFER"]
 
+    def _load_model(self):
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        model_path = os.path.join(base_dir, "..", "machine_learning", "models", "fraud_detection_pipeline.pkl")
+        model_path = os.path.join(base_dir, "..", "machine_learning", "models", "fraud_rf_model_tuned.pkl")
         model_path = os.path.normpath(model_path)
-        
+
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model file not found at: {model_path}")
-            
+
         self.model = joblib.load(model_path)
         print(f"[FraudDetectionService] Loaded model from: {model_path}")
 
     def _engineer_features(self, tx: TransactionRequest) -> pd.DataFrame:
         """
-        Tính toán thêm 2 features mở rộng (Feature Engineering) là errorBalanceOrig và errorBalanceDest
-        trước khi đưa vào hàm dự đoán của model.
+        Build feature DataFrame matching the exact 20-column schema from X_train_final.csv:
+
+        Categorical (one-hot):
+            categorical__type_CASH_IN, categorical__type_CASH_OUT, categorical__type_DEBIT,
+            categorical__type_PAYMENT, categorical__type_TRANSFER
+
+        Numeric:
+            numeric__step, numeric__amount, numeric__oldbalanceOrg, numeric__newbalanceOrig,
+            numeric__oldbalanceDest, numeric__newbalanceDest,
+            numeric__log_amount, numeric__amount_is_zero,
+            numeric__oldbalanceOrg_is_zero, numeric__dest_balance_is_zero,
+            numeric__origin_balance_delta, numeric__destination_balance_delta,
+            numeric__errorBalanceOrig, numeric__errorBalanceDest,
+            numeric__amount_to_origin_balance_ratio
         """
-        errorBalanceOrig = tx.newbalanceOrig + tx.amount - tx.oldbalanceOrg
-        errorBalanceDest = tx.oldbalanceDest + tx.amount - tx.newbalanceDest
+        import math
+
+        amount        = float(tx.amount)
+        oldbalanceOrg = float(tx.oldbalanceOrg)
+        newbalanceOrig= float(tx.newbalanceOrig)
+        oldbalanceDest= float(tx.oldbalanceDest)
+        newbalanceDest= float(tx.newbalanceDest)
+        tx_type       = tx.type.upper()
+
+        errorBalanceOrig = newbalanceOrig + amount - oldbalanceOrg
+        errorBalanceDest = oldbalanceDest + amount - newbalanceDest
 
         data = {
-            "step": int(tx.step),
-            "type": tx.type.upper(),
-            "amount": float(tx.amount),
-            "oldbalanceOrg": float(tx.oldbalanceOrg),
-            "newbalanceOrig": float(tx.newbalanceOrig),
-            "oldbalanceDest": float(tx.oldbalanceDest),
-            "newbalanceDest": float(tx.newbalanceDest),
-            "errorBalanceOrig": float(errorBalanceOrig),
-            "errorBalanceDest": float(errorBalanceDest),
+            # One-hot encoded type
+            "categorical__type_CASH_IN":  1 if tx_type == "CASH_IN"  else 0,
+            "categorical__type_CASH_OUT": 1 if tx_type == "CASH_OUT" else 0,
+            "categorical__type_DEBIT":    1 if tx_type == "DEBIT"    else 0,
+            "categorical__type_PAYMENT":  1 if tx_type == "PAYMENT"  else 0,
+            "categorical__type_TRANSFER": 1 if tx_type == "TRANSFER" else 0,
+
+            # Raw numeric
+            "numeric__step":              int(tx.step),
+            "numeric__amount":            amount,
+            "numeric__oldbalanceOrg":     oldbalanceOrg,
+            "numeric__newbalanceOrig":    newbalanceOrig,
+            "numeric__oldbalanceDest":    oldbalanceDest,
+            "numeric__newbalanceDest":    newbalanceDest,
+
+            # Engineered numeric
+            "numeric__log_amount":                   math.log1p(amount),
+            "numeric__amount_is_zero":               1 if amount == 0 else 0,
+            "numeric__oldbalanceOrg_is_zero":        1 if oldbalanceOrg == 0 else 0,
+            "numeric__dest_balance_is_zero":         1 if oldbalanceDest == 0 else 0,
+            "numeric__origin_balance_delta":         newbalanceOrig - oldbalanceOrg,
+            "numeric__destination_balance_delta":    newbalanceDest - oldbalanceDest,
+            "numeric__errorBalanceOrig":             errorBalanceOrig,
+            "numeric__errorBalanceDest":             errorBalanceDest,
+            "numeric__amount_to_origin_balance_ratio": amount / oldbalanceOrg if oldbalanceOrg > 0 else 0.0,
         }
-        
+
         expected_columns = [
-            "step",
-            "type",
-            "amount",
-            "oldbalanceOrg",
-            "newbalanceOrig",
-            "oldbalanceDest",
-            "newbalanceDest",
-            "errorBalanceOrig",
-            "errorBalanceDest",
+            "categorical__type_CASH_IN", "categorical__type_CASH_OUT",
+            "categorical__type_DEBIT", "categorical__type_PAYMENT",
+            "categorical__type_TRANSFER",
+            "numeric__step", "numeric__amount",
+            "numeric__oldbalanceOrg", "numeric__newbalanceOrig",
+            "numeric__oldbalanceDest", "numeric__newbalanceDest",
+            "numeric__log_amount", "numeric__amount_is_zero",
+            "numeric__oldbalanceOrg_is_zero", "numeric__dest_balance_is_zero",
+            "numeric__origin_balance_delta", "numeric__destination_balance_delta",
+            "numeric__errorBalanceOrig", "numeric__errorBalanceDest",
+            "numeric__amount_to_origin_balance_ratio",
         ]
-        
+
         return pd.DataFrame([data])[expected_columns]
 
     def predict(self, tx: TransactionRequest) -> PredictionResponse:
@@ -73,24 +114,24 @@ class FraudDetectionService:
             
         explanations = []
         if tx.type.upper() in {"TRANSFER", "CASH_OUT"}:
-            explanations.append(f"Loại giao dịch '{tx.type}' có xác suất gian lận cao hơn.")
-            
+            explanations.append("Giao dịch chuyển tiền và rút tiền có xác suất gian lận cao hơn các loại khác.")
+
         if tx.newbalanceOrig == 0 and tx.amount > 0:
-            explanations.append("Dấu hiệu rút cạn tài khoản: số dư tài khoản nguồn về 0 sau giao dịch.")
-            
+            explanations.append("Giao dịch này sẽ rút cạn toàn bộ số dư tài khoản nguồn.")
+
         error_orig = tx.newbalanceOrig + tx.amount - tx.oldbalanceOrg
         if abs(error_orig) > 10:
-            explanations.append(f"Sai lệch số dư phía nguồn (errorBalanceOrig = {error_orig:,.2f}).")
-            
+            explanations.append("Số dư tài khoản nguồn sau giao dịch không khớp với số tiền đã giao dịch.")
+
         error_dest = tx.oldbalanceDest + tx.amount - tx.newbalanceDest
         if abs(error_dest) > 10:
-            explanations.append(f"Sai lệch số dư phía đích (errorBalanceDest = {error_dest:,.2f}).")
-            
-        if tx.amount > 200_000:
-            explanations.append(f"Số tiền giao dịch ({tx.amount:,.0f}) vượt mức bình thường.")
-            
+            explanations.append("Số dư tài khoản đích sau giao dịch không khớp với số tiền đã nhận.")
+
+        if tx.amount > 5_000_000:
+            explanations.append(f"Số tiền giao dịch ({tx.amount:,.0f} VND) cao bất thường.")
+
         if not explanations:
-            explanations.append("Giao dịch bình thường — không phát hiện dấu hiệu bất thường.")
+            explanations.append("Không phát hiện dấu hiệu bất thường nào từ mô hình AI.")
             
         return PredictionResponse(
             risk_score=risk_score,

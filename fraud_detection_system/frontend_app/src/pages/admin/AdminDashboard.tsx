@@ -233,8 +233,8 @@ export const AdminDashboard = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">System Overview</h1>
-          <p className="mt-1 text-sm text-slate-500">Live data from transaction, alert, prediction, and review tables</p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Tổng Quan Hệ Thống</h1>
+          <p className="mt-1 text-sm text-slate-500">Dữ liệu thời gian thực từ giao dịch, cảnh báo, dự đoán và kiểm duyệt</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -243,7 +243,7 @@ export const AdminDashboard = () => {
             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
           >
             <UsersRound className="h-4 w-4" />
-            Accounts
+            Tài khoản
           </button>
           <button
             type="button"
@@ -251,7 +251,7 @@ export const AdminDashboard = () => {
             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
           >
             <RefreshCw className="h-4 w-4" />
-            Refresh
+            Làm mới
           </button>
         </div>
       </div>
@@ -264,35 +264,35 @@ export const AdminDashboard = () => {
 
       {isLoading ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500 shadow-sm">
-          Loading dashboard
+          Đang tải...
         </div>
       ) : (
         <>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
-            <StatCard title="Total Users" value={summary.total_users.toLocaleString()} icon={Users} />
-            <StatCard title="Transactions (24h)" value={summary.transactions_24h.toLocaleString()} icon={Activity} />
+            <StatCard title="Tổng người dùng" value={summary.total_users.toLocaleString()} icon={Users} />
+            <StatCard title="Giao dịch (24h)" value={summary.transactions_24h.toLocaleString()} icon={Activity} />
             <StatCard
-              title="Pending Reviews"
+              title="Chờ kiểm duyệt"
               value={summary.pending_reviews.toLocaleString()}
               icon={AlertTriangle}
               isAlert={summary.pending_reviews > 0}
             />
             <StatCard
-              title="Avg Risk Score"
+              title="Điểm rủi ro TB"
               value={avgRiskScore.toFixed(2)}
               icon={BarChart3}
-              trend={`High risk share ${highRiskShare.toFixed(1)}%`}
+              trend={`Tỷ lệ rủi ro cao: ${highRiskShare.toFixed(1)}%`}
               trendUp={highRiskShare < 25}
             />
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium text-slate-500">High Risk Alerts</p>
+              <p className="text-sm font-medium text-slate-500">Cảnh báo rủi ro cao</p>
               <p className="mt-1 text-2xl font-bold text-slate-900">{summary.high_risk_alerts.toLocaleString()}</p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium text-slate-500">Blocked Transactions</p>
+              <p className="text-sm font-medium text-slate-500">Giao dịch bị chặn</p>
               <p className="mt-1 text-2xl font-bold text-slate-900">{summary.blocked_transactions.toLocaleString()}</p>
             </div>
           </div>
@@ -301,7 +301,7 @@ export const AdminDashboard = () => {
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-slate-500" />
-                <h3 className="text-base font-semibold text-slate-900">Risk Distribution</h3>
+                <h3 className="text-base font-semibold text-slate-900">Phân bố mức rủi ro</h3>
               </div>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
@@ -310,7 +310,7 @@ export const AdminDashboard = () => {
                     <XAxis dataKey="level" tickLine={false} axisLine={false} />
                     <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
                     <Tooltip
-                      formatter={(value: number) => [`${value} tx`, 'Count']}
+                      formatter={(value: number) => [`${value} giao dịch`, 'Số lượng']}
                       contentStyle={{ borderRadius: '12px', borderColor: '#e2e8f0' }}
                     />
                     <Bar dataKey="count" radius={[8, 8, 0, 0]}>
@@ -326,7 +326,7 @@ export const AdminDashboard = () => {
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
                 <PieChartIcon className="h-4 w-4 text-slate-500" />
-                <h3 className="text-base font-semibold text-slate-900">Review Status Mix</h3>
+                <h3 className="text-base font-semibold text-slate-900">Tỉ lệ kết quả kiểm duyệt</h3>
               </div>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
@@ -356,7 +356,7 @@ export const AdminDashboard = () => {
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
                 <ShieldAlert className="h-4 w-4 text-slate-500" />
-                <h3 className="text-base font-semibold text-slate-900">7-Day Volume and Risk</h3>
+                <h3 className="text-base font-semibold text-slate-900">Biến động 7 ngày gần đây</h3>
               </div>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
@@ -367,18 +367,18 @@ export const AdminDashboard = () => {
                     <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} domain={[0, 100]} />
                     <Tooltip
                       formatter={(value: number, name: string) => {
-                        if (name === 'transactions') return [`${value} tx`, 'Transactions'];
-                        return [`${value.toFixed(2)}/100`, 'Avg risk'];
+                        if (name === 'transactions') return [`${value} giao dịch`, 'Số lượng'];
+                        return [`${value.toFixed(2)}/100`, 'Rủi ro TB'];
                       }}
                       contentStyle={{ borderRadius: '12px', borderColor: '#e2e8f0' }}
                     />
                     <Legend />
-                    <Bar yAxisId="left" dataKey="transactions" name="Transactions" fill="#0f766e" radius={[8, 8, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="transactions" name="Giao dịch" fill="#0f766e" radius={[8, 8, 0, 0]} />
                     <Line
                       yAxisId="right"
                       type="monotone"
                       dataKey="avgRisk"
-                      name="Avg risk"
+                      name="Rủi ro TB"
                       stroke="#e11d48"
                       strokeWidth={2.5}
                       dot={{ r: 3 }}
@@ -391,13 +391,13 @@ export const AdminDashboard = () => {
 
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className="px-6 py-5 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-900 tracking-tight">Priority Flagged Transactions</h3>
+              <h3 className="text-lg font-semibold text-slate-900 tracking-tight">Giao dịch ưu tiên kiểm duyệt</h3>
               <button
                 type="button"
                 onClick={() => navigate('/admin/alerts')}
                 className="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
               >
-                View Queue
+                Xem hàng chờ
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
@@ -405,11 +405,11 @@ export const AdminDashboard = () => {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Req ID</th>
-                    <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Amount</th>
-                    <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Risk Score</th>
-                    <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Risk Level</th>
-                    <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Action</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Mã GD</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Số tiền</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Mức rủi ro</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Nhãn</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -417,7 +417,7 @@ export const AdminDashboard = () => {
                     <tr>
                       <td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">
                         <ShieldAlert className="mx-auto mb-3 h-8 w-8 text-slate-300" />
-                        No high risk transactions waiting in the queue.
+                        Không có giao dịch rủi ro cao nào đang chờ.
                       </td>
                     </tr>
                   )}
@@ -425,7 +425,7 @@ export const AdminDashboard = () => {
                     <tr key={txn.prediction_id} className="hover:bg-slate-50 transition-colors duration-200 group">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="font-mono text-sm font-medium text-slate-900">{txn.request_id}</span>
-                        <div className="mt-1 text-xs text-slate-500">{txn.type} - {txn.status}</div>
+                        <div className="mt-1 text-xs text-slate-500">{txn.type === 'TRANSFER' ? 'Chuyển tiền' : txn.type === 'CASH_OUT' ? 'Rút tiền' : txn.type} — {txn.status === 'BLOCKED' ? 'Bị chặn' : txn.status === 'COMPLETED' ? 'Hoàn tất' : txn.status}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <span className="text-sm font-semibold text-slate-900">{formatVnd(txn.amount)}</span>
@@ -450,7 +450,7 @@ export const AdminDashboard = () => {
                           onClick={() => navigate('/admin/alerts')}
                           className="px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 active:scale-[0.98] transition-all duration-200"
                         >
-                          Review
+                          Kiểm duyệt
                         </button>
                       </td>
                     </tr>

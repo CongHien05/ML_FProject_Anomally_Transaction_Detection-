@@ -123,35 +123,42 @@ def _apply_history_rules(
 
     if ratio >= 20:
         score += 20
-        explanations.append("Amount is at least 20x higher than the account's recent average.")
+        explanations.append("Số tiền giao dịch này cao gấp hơn 20 lần so với mức trung bình gần đây — bất thường.")
     elif ratio >= 10:
         score += 12
-        explanations.append("Amount is at least 10x higher than the account's recent average.")
+        explanations.append("Số tiền giao dịch này cao gấp hơn 10 lần so với mức trung bình gần đây.")
     elif ratio >= 5:
         score += 6
-        explanations.append("Amount is at least 5x higher than the account's recent average.")
+        explanations.append("Số tiền giao dịch cao hơn đáng kể so với mức trung bình gần đây.")
 
     if features["transaction_count_24h"] >= 10:
         score += 12
-        explanations.append("The account has unusually high transaction volume in the last 24 hours.")
+        explanations.append("Tài khoản có số lượng giao dịch trong 24h qua bất thường cao.")
     elif features["transaction_count_24h"] >= 5:
         score += 8
-        explanations.append("The account has several transactions in the last 24 hours.")
+        explanations.append("Tài khoản đã thực hiện nhiều giao dịch trong 24h qua.")
 
     if features["is_new_receiver"]:
         score += 5
-        explanations.append("Receiver has no completed transfer history with this account.")
+        explanations.append("Bạn chưa từng chuyển tiền thành công đến người nhận này trước đây.")
 
-    if transfer_like and amount >= 200_000 and balance_ratio >= 0.95:
-        score = max(score, 85.0)
-        explanations.append("Transaction would drain almost the entire source account balance.")
-    elif transfer_like and amount >= 200_000 and balance_ratio >= 0.75:
-        score = max(score, 70.0)
-        explanations.append("Transaction uses a very large share of the source account balance.")
+    # Ngưỡng số tiền tối thiểu để đánh giá "rút cạn tài khoản" — chỉ áp dụng từ 2 triệu VND trở lên
+    DRAIN_AMOUNT_THRESHOLD = 2_000_000
+    LARGE_TRANSFER_THRESHOLD = 5_000_000
 
-    if tx_type == "TRANSFER" and features["is_new_receiver"] and amount >= 500_000:
-        score = max(score, 80.0)
-        explanations.append("Large transfer to a new receiver requires admin review before funds move.")
+    if transfer_like and amount >= DRAIN_AMOUNT_THRESHOLD and balance_ratio >= 0.99:
+        score += 40
+        explanations.append("Giao dịch này rút gần như toàn bộ số dư tài khoản — dấu hiệu rất đáng ngờ.")
+    elif transfer_like and amount >= DRAIN_AMOUNT_THRESHOLD and balance_ratio >= 0.95:
+        score += 25
+        explanations.append("Giao dịch này sẽ sử dụng hầu hết số dư tài khoản của bạn.")
+    elif transfer_like and amount >= DRAIN_AMOUNT_THRESHOLD and balance_ratio >= 0.75:
+        score += 12
+        explanations.append("Giao dịch này chiếm phần lớn số dư tài khoản của bạn.")
+
+    if tx_type == "TRANSFER" and features["is_new_receiver"] and amount >= LARGE_TRANSFER_THRESHOLD:
+        score += 30
+        explanations.append("Chuyển số tiền lớn đến người nhận lần đầu yêu cầu xác minh bổ sung.")
 
     return round(min(score, 100.0), 2)
 

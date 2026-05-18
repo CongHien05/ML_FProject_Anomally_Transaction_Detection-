@@ -27,17 +27,17 @@ export const UserSidebar = () => {
   }, []);
 
   const navItems = [
-    { name: 'Dashboard', path: '/user/dashboard', icon: LayoutDashboard },
-    { name: 'Transfer Money', path: '/user/transfer', icon: Send },
-    { name: 'Cash Out', path: '/user/cashout', icon: Wallet },
-    { name: 'Transaction History', path: '/user/history', icon: History },
+    { name: 'Tổng quan', path: '/user/dashboard', icon: LayoutDashboard },
+    { name: 'Chuyển Tiền', path: '/user/transfer', icon: Send },
+    { name: 'Rút Tiền', path: '/user/cashout', icon: Wallet },
+    { name: 'Lịch Sử Giao Dịch', path: '/user/history', icon: History },
   ];
 
   return (
     <aside className="w-64 bg-white border-r border-slate-200 h-[calc(100vh-4rem)] sticky top-16 flex-col shadow-sm hidden lg:flex">
       <div className="flex-1 overflow-y-auto py-5 px-3">
         <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-3 mb-4">
-          Personal Banking
+          Ngân Hàng Cá Nhân
         </p>
         <nav className="space-y-0.5">
           {navItems.map((item) => {
@@ -76,11 +76,11 @@ export const UserSidebar = () => {
               <p className="truncate text-sm font-semibold text-slate-900 leading-none">
                 {user?.full_name || 'Guest User'}
               </p>
-              <p className="truncate text-xs text-slate-400 mt-1">Account #{user?.account_id || '--'}</p>
+              <p className="truncate text-xs text-slate-400 mt-1">Tài khoản #{user?.account_id || '--'}</p>
             </div>
           </div>
           <div className="mt-2.5 rounded-lg bg-white border border-slate-200 px-3 py-2">
-            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Balance</p>
+            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Số dư</p>
             <p className="mt-0.5 text-sm font-bold text-slate-900">{formatVnd(user?.balance || 0)}</p>
           </div>
         </div>
@@ -90,7 +90,7 @@ export const UserSidebar = () => {
           className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-all duration-150 group"
         >
           <LogOut className="w-[18px] h-[18px] text-slate-400 group-hover:text-rose-500 transition-colors" />
-          Sign Out
+          Đăng xuất
         </button>
       </div>
     </aside>

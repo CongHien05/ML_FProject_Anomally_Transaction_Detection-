@@ -4,6 +4,26 @@ import { StatusBadge, StatusType } from '../../components/ui/StatusBadge';
 import { getMyTransactions } from '../../services/api';
 import { formatVnd, getStoredUser } from '../../services/auth';
 
+interface Transaction {
+  id: number;
+  request_id: string;
+  from_account_id: number | null;
+  from_username: string | null;
+  from_full_name: string | null;
+  to_account_id: number | null;
+  to_username: string | null;
+  to_full_name: string | null;
+  amount: number;
+  type: string;
+  note: string | null;
+  status: string;
+  risk_score: number | null;
+  risk_level: string | null;
+  explanations: string[];
+  created_at: string;
+  updated_at: string;
+}
+
 const formatTime = (value: string) =>
   new Intl.DateTimeFormat('vi-VN', {
     day: '2-digit',
@@ -15,7 +35,7 @@ const formatTime = (value: string) =>
 
 export const HistoryPage = () => {
   const user = getStoredUser();
-  const [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -27,7 +47,7 @@ export const HistoryPage = () => {
         if (mounted) setTransactions(data);
       })
       .catch((err) => {
-        if (mounted) setError(err.message || 'Could not load transaction history');
+        if (mounted) setError(err.message || 'Không thể tải lịch sử giao dịch');
       })
       .finally(() => {
         if (mounted) setIsLoading(false);
@@ -41,15 +61,15 @@ export const HistoryPage = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Transaction History</h1>
-        <p className="text-gray-500 text-sm mt-1">Review completed, pending, and blocked activity.</p>
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Lịch Sử Giao Dịch</h1>
+        <p className="text-gray-500 text-sm mt-1">Xem lại các giao dịch đã thực hiện, đang chờ và bị chặn.</p>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[400px]">
         {isLoading && (
           <div className="flex min-h-[400px] items-center justify-center text-slate-500">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            Loading history
+            Đang tải...
           </div>
         )}
 
@@ -62,8 +82,8 @@ export const HistoryPage = () => {
         {!isLoading && !error && transactions.length === 0 && (
           <div className="flex min-h-[400px] flex-col items-center justify-center text-center">
             <History className="w-16 h-16 text-gray-200 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900">No transaction history</h3>
-            <p className="text-gray-500 max-w-sm mt-2 text-center">Transfers and cash-out requests will appear here.</p>
+            <h3 className="text-lg font-medium text-gray-900">Chưa có giao dịch nào</h3>
+            <p className="text-gray-500 max-w-sm mt-2 text-center">Các giao dịch chuyển tiền và rút tiền sẽ hiện thị tại đây.</p>
           </div>
         )}
 
@@ -72,19 +92,19 @@ export const HistoryPage = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Request</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Counterparty</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Risk</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Amount</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Status</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Mã GD</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Người giao dịch</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Rủi ro</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Số tiền</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Trạng thái</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {transactions.map((txn) => {
                   const outgoing = txn.from_account_id === user?.account_id;
                   const counterparty = outgoing
-                    ? txn.to_full_name || txn.to_username || 'External'
-                    : txn.from_full_name || txn.from_username || 'External';
+                    ? txn.to_full_name || txn.to_username || 'Ngoài hệ thống'
+                    : txn.from_full_name || txn.from_username || 'Ngoài hệ thống';
 
                   return (
                     <tr key={txn.id} className="hover:bg-slate-50 transition-colors">
@@ -94,11 +114,24 @@ export const HistoryPage = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-slate-900">{counterparty}</div>
-                        <div className="mt-1 text-xs text-slate-500">{txn.type}</div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          {txn.type === 'TRANSFER' ? 'Chuyển tiền' : txn.type === 'CASH_OUT' ? 'Rút tiền' : txn.type === 'CASH_IN' ? 'Nạp tiền' : txn.type}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-slate-900">{txn.risk_score?.toFixed?.(2) || '0.00'}/100</div>
-                        <div className="mt-1 text-xs text-slate-500">{txn.risk_level || 'LOW'}</div>
+                        {txn.risk_level && txn.risk_level !== 'LOW' ? (
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                            txn.risk_level === 'CRITICAL' ? 'bg-red-100 text-red-700' :
+                            txn.risk_level === 'HIGH'     ? 'bg-orange-100 text-orange-700' :
+                                                            'bg-yellow-100 text-yellow-700'
+                          }`}>
+                            ⚠ {txn.risk_level === 'CRITICAL' ? 'Rất cao' : txn.risk_level === 'HIGH' ? 'Cao' : 'Trung bình'}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-600">
+                            ✓ An toàn
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <span className={`text-sm font-semibold ${outgoing ? 'text-slate-900' : 'text-emerald-600'}`}>
